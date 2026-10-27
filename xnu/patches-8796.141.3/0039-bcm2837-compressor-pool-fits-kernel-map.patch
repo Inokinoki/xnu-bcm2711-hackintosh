@@ -1,0 +1,18 @@
+diff --git a/osfmk/vm/vm_compressor.c b/osfmk/vm/vm_compressor.c
+index 1e7ca07..3e57992 100644
+--- a/osfmk/vm/vm_compressor.c
++++ b/osfmk/vm/vm_compressor.c
+@@ -811,7 +811,12 @@ vm_compressor_set_size(void)
+ 	compressor_pool_max_size = C_SEG_MAX_LIMIT;
+ 	compressor_pool_max_size *= c_seg_bufsize;
+ 
+-#if XNU_TARGET_OS_OSX
++/*
++ * BCM2837/BCM2711 is built as a macOS platform, whose pool is 16x max_mem. That VA claim
++ * plus the 24 GiB zone map no longer fits the 48 GiB kernel map once max_mem
++ * passes ~1 GiB (kmem_range_init panics): use the 1x embedded pool.
++ */
++#if XNU_TARGET_OS_OSX && !defined(ARM64_BOARD_CONFIG_BCM2837)
+ 
+ 	if (vm_compression_limit == 0) {
+ 		if (max_mem <= (4ULL * 1024ULL * 1024ULL * 1024ULL)) {
