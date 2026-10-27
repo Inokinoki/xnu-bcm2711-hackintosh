@@ -8,14 +8,14 @@ index 997a4ab..4b4b5b6 100644
  
 +#ifdef PI3_UART
 +	/*
-+	 * Raspberry Pi 3: the firmware passes a DTB, not an ADT, so there is no
++	 * Raspberry Pi 4 (BCM2711): the firmware passes a DTB, not an ADT, so there is no
 +	 * arm-io node to look the peripherals up in. BCM283x peripherals are at
-+	 * physical 0x3F000000; GPIO and the mini UART (AUX) have fixed offsets.
++	 * physical 0xFE000000; GPIO and the mini UART (AUX) have fixed offsets.
 +	 * The mini UART baud divisor (270 in pi3_uart_init) assumes a 250 MHz
 +	 * core clock: keep core_freq=250 in config.txt.
 +	 */
-+	pi3_gpio_base_vaddr = ml_io_map(0x3F200000, 0x1000);
-+	pi3_aux_base_vaddr = ml_io_map(0x3F215000, 0x1000);
++	pi3_gpio_base_vaddr = ml_io_map(0xFE200000, 0x1000);
++	pi3_aux_base_vaddr = ml_io_map(0xFE215000, 0x1000);
 +	register_serial_functions(&pi3_uart_serial_functions);
 +	pi3_uart_init();
 +	/*

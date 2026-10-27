@@ -1,7 +1,8 @@
-name: xnu-8796.141.3-bcm2837
+name: xnu-8796.141.3-bcm2711
 
-# Builds xnu-8796.141.3 (macOS 13.5, the iOS 16 generation) for the Raspberry Pi 3
-# (BCM2837) machine config, using blacktop/darwin-xnu-build the same way
+# Builds xnu-8796.141.3 (macOS 13.5, the iOS 16 generation) for the Raspberry Pi 4
+# (BCM2711, Cortex-A72) target. xnu's Pi board config is spelled BCM2837 (MACHINE_CONFIG
+# and ARM64_BOARD_CONFIG_BCM2837); the patches retarget it to the BCM2711 memory map and CPU, using blacktop/darwin-xnu-build the same way
 # ios-sweet's xnu.yml does. The patches live in xnu/patches-8796.141.3/.
 
 on:
@@ -17,13 +18,13 @@ on:
         description: make -k (collect all compile errors in one run)
         default: "true"
   push:
-    branches: [master, xnu-8796-bcm2837, rootfs-ramdisk]
+    branches: [main]
     paths:
       - "xnu/patches-8796.141.3/**"
-      - ".github/workflows/xnu-8796.141.3-bcm2837.yml"
+      - ".github/workflows/xnu-8796.141.3-bcm2711.yml"
 
 concurrency:
-  group: xnu-8796.141.3-bcm2837-${{ github.ref }}
+  group: xnu-8796.141.3-bcm2711-${{ github.ref }}
   cancel-in-progress: true
 
 env:
@@ -49,8 +50,8 @@ jobs:
           git -C dxb checkout -q FETCH_HEAD
           # 12.5-14.3 use the top-level patches dir; ours go next to blacktop's
           cp xnu/patches-8796.141.3/*.patch xnu/patches-8796.141.3/*.sh dxb/patches/
-          # libfirehose_kernel is built for x86_64/arm64e by default; the BCM2837 kernel
-          # links only its arm64 slice, and that slice must target the Pi 3's Cortex-A53
+          # libfirehose_kernel is built for x86_64/arm64e by default; the BCM2711 kernel
+          # links only its arm64 slice, and that slice must target the Pi 4's Cortex-A72
           # (ARMv8.0): the default Apple CPU emits LSE atomics (ldadd), which trap there.
           # $(inherited) keeps the library's own flags (-DKERNEL=1 ...).
           python3 - <<'PY'
@@ -59,10 +60,10 @@ jobs:
           s = p.read_text()
           old = 'ARCHS="x86_64 arm64e" VALID_ARCHS="x86_64 arm64e"'
           assert s.count(old) == 1, s.count(old)
-          new = 'ARCHS="arm64" VALID_ARCHS="arm64" OTHER_CFLAGS=\'$(inherited) -mcpu=cortex-a53\''
+          new = 'ARCHS="arm64" VALID_ARCHS="arm64" OTHER_CFLAGS=\'$(inherited) -mcpu=cortex-a72\''
           p.write_text(s.replace(old, new))
           PY
-          grep -c "OTHER_CFLAGS='\$(inherited) -mcpu=cortex-a53'" dxb/build.sh
+          grep -c "OTHER_CFLAGS='\$(inherited) -mcpu=cortex-a72'" dxb/build.sh
           ls dxb/patches
 
       - name: Deps
@@ -97,7 +98,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: xnu-8796.141.3-bcm2837-kernel
+          name: xnu-8796.141.3-bcm2711-kernel
           path: out/
           if-no-files-found: warn
           retention-days: 14

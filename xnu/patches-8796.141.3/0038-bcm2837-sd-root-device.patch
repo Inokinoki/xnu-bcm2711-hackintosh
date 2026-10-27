@@ -39,11 +39,13 @@ diff --git a/bsd/dev/bcm2837_sd.c b/bsd/dev/bcm2837_sd.c
 new file mode 100644
 --- /dev/null
 +++ b/bsd/dev/bcm2837_sd.c
-@@ -0,0 +1,493 @@
+@@ -0,0 +1,497 @@
 +/*
-+ * BCM2837 SD card root device (Raspberry Pi 3).
++ * BCM2837 SD card root device (Raspberry Pi 4).
 + *
-+ * The EMMC controller at 0x3f300000 is an SDHCI-compatible Arasan host. This
++ * The SD host is SDHCI-compatible (Arasan). QEMU raspi4b attaches the card to the
++ * EMMC controller at 0xfe300000 (the default here); the real Pi 4 wires the SD slot to
++ * EMMC2 at 0xfe340000 (boot-arg sdbase=0xfe340000, untested on hardware). This
 + * driver runs it polled with PIO (no interrupts, no DMA, 1-bit bus), brings an
 + * SD/SDHC card from idle to transfer state and exposes the whole card as the
 + * BSD disk sdroot0 (rsdroot0) with 512-byte sectors. Root on it with
@@ -68,7 +70,7 @@ new file mode 100644
 +/* osfmk/arm/machine_routines.h, not exported to the BSD layer */
 +extern vm_offset_t ml_io_map(vm_offset_t phys_addr, vm_size_t size);
 +
-+#define EMMC_PHYS       0x3f300000ULL
++#define EMMC_PHYS_DEFAULT       0xfe300000ULL
 +#define EMMC_SIZE       0x100
 +
 +/* SDHCI standard registers (32-bit accesses only: the BCM2835 bus requires it). */
@@ -490,7 +492,9 @@ new file mode 100644
 +{
 +	int error;
 +
-+	sd.regs = ml_io_map(EMMC_PHYS, EMMC_SIZE);
++	uint64_t emmc_phys = EMMC_PHYS_DEFAULT;
++	PE_parse_boot_argn("sdbase", &emmc_phys, sizeof(emmc_phys));
++	sd.regs = ml_io_map(emmc_phys, EMMC_SIZE);
 +	if (!sd.regs) {
 +		return ENOMEM;
 +	}

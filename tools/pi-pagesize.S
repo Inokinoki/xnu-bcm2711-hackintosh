@@ -1,5 +1,5 @@
 /*
- * Page-size probe PID 1 for the 4K BCM2837 kernel: what does a userland
+ * Page-size probe PID 1 for the 4K BCM2711 kernel: what does a userland
  * built for 16K pages (iOS) see? Prints hw.pagesize, whether a 4K mprotect and a
  * 16K-aligned mmap work, and the commpage page shifts. Position independent,
  * no relocations (tools/mkinit.py wraps it); raw XNU syscalls: x16 = number,
@@ -166,7 +166,7 @@ five_sec:
 path:
 	.asciz	"/dev/console"
 banner:
-	.ascii	"\n*** BCM2837 page-size probe (PID 1) ***\n"
+	.ascii	"\n*** BCM2711 page-size probe (PID 1) ***\n"
 banner_end:
 l_pagesize:
 	.ascii	"hw.pagesize           = "

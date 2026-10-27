@@ -1,4 +1,4 @@
-/* Raspberry Pi firmware / QEMU raspi3b load address for AArch64 kernel images. */
+/* Raspberry Pi firmware / QEMU raspi4b load address for AArch64 kernel images. */
 ENTRY(_start)
 
 SECTIONS

@@ -1,13 +1,13 @@
 --- a/iokit/KernelConfigTables.cpp
 +++ b/iokit/KernelConfigTables.cpp
 @@ -41,6 +41,12 @@
-     "     'IONameMatch'     = 'raspberrypi,3-model-b';"
+     "     'IONameMatch'     = 'raspberrypi,4-model-b';"
      "     'IOProbeScore'    = 10000:32;"
      "   },"
 +    "   {"
 +    "     'IOClass'         = BCM2837CPU;"
 +    "     'IOProviderClass' = IOPlatformDevice;"
-+    "     'IONameMatch'     = 'arm,cortex-a53';"
++    "     'IONameMatch'     = 'arm,cortex-a72';"
 +    "     'IOProbeScore'    = 10000:32;"
 +    "   },"
  #endif
@@ -28,9 +28,9 @@ index 0000000..60b092e
 +++ b/iokit/Kernel/arm/BCM2837CPU.cpp
 @@ -0,0 +1,146 @@
 +/*
-+ * Single-CPU bring-up for the Raspberry Pi 3 (BCM2837) using XNU's legacy
++ * Single-CPU bring-up for the Raspberry Pi 4 (BCM2711) using XNU's legacy
 + * IOCPU interface. The architected timer enters through pe_fiq/sleh_irq.
-+ * Secondary CPUs, IPIs (the BCM2836 per-core mailboxes) and suspend need
++ * Secondary CPUs, IPIs (the GIC-400 SGIs) and suspend need
 + * separate platform work, so this driver registers only the boot CPU.
 + */
 +#include <pexpert/arm64/board_config.h>
@@ -82,7 +82,7 @@ index 0000000..60b092e
 +	if (!IOCPU::start(provider)) {
 +		return false;
 +	}
-+	cpuName = OSSymbol::withCStringNoCopy("Cortex-A53");
++	cpuName = OSSymbol::withCStringNoCopy("Cortex-A72");
 +	if (cpuName == NULL) {
 +		return false;
 +	}
@@ -145,7 +145,7 @@ index 0000000..60b092e
 +void
 +BCM2837CPU::signalCPU(IOCPU *target __unused)
 +{
-+	/* Single CPU: nothing to signal. IPIs need the BCM2836 mailbox driver. */
++	/* Single CPU: nothing to signal. IPIs need the GIC-400 driver. */
 +	panic("BCM2837 CPU: IPIs are not implemented");
 +}
 +

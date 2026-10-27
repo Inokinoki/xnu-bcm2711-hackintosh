@@ -4,7 +4,7 @@
  ARM64_LINK_ADDR    =0xfffffe0007004000
  endif
  
-+# BCM2837 (Raspberry Pi 3, 1 GiB, 4K pages) uses the standard non-large-memory
++# BCM2837 (Raspberry Pi 4, up to 4 GiB, 4K pages) uses the standard non-large-memory
 +# layout: the kernel links above LOW_GLOBAL_BASE_ADDRESS (0xfffffff000000000),
 +# the base the VM pointer packing and the kmem ranges use. ARM_LARGE_MEMORY
 +# (set for every MacOSX target) would link at 0xfffffe0007004000, outside the

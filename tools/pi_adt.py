@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Minimal Apple Device Tree (ADT) for the Raspberry Pi 3 loader.
+"""Minimal Apple Device Tree (ADT) for the Raspberry Pi 4 loader.
 
 The firmware gives the loader a flattened DTB; xnu only reads an ADT. This
-builds the handful of nodes the BCM2837 kernel config asks for. Serialization
+builds the handful of nodes the BCM2711 (xnu BCM2837 board config) kernel asks for. Serialization
 matches the ADT layout used by ios-sweet's tools/adt.py:
 
   node = {u32 nprops, u32 nchildren, props..., children...}
@@ -11,9 +11,9 @@ matches the ADT layout used by ios-sweet's tools/adt.py:
 import struct
 
 
-BCM283X_PERIPH_BASE = 0x3F000000
-BCM283X_PERIPH_SIZE = 0x01000000
-TIMEBASE_HZ = 19200000
+BCM283X_PERIPH_BASE = 0xFE000000
+BCM283X_PERIPH_SIZE = 0x01800000
+TIMEBASE_HZ = 54000000
 
 
 class Node:
@@ -48,15 +48,15 @@ def serialize(node):
 
 
 def build(dram_base, dram_size, cmdline='', ramdisk=None):
-    """Return the ADT blob for a Pi 3 with RAM at [dram_base, dram_base + dram_size).
+    """Return the ADT blob for a Pi 4 with RAM at [dram_base, dram_base + dram_size).
 
     ramdisk=(phys, size) adds /chosen/memory-map RAMDisk (two uintptr_t) for
     IOFindBSDRoot / the md driver (boot-arg rd=md0).
     """
     root = Node('device-tree')
     root.prop('name', 'device-tree')
-    root.prop('compatible', 'raspberrypi,3-model-b')
-    root.prop('model', 'Raspberry Pi 3 Model B')
+    root.prop('compatible', 'raspberrypi,4-model-b')
+    root.prop('model', 'Raspberry Pi 4 Model B')
 
     chosen = root.child('chosen')
     chosen.prop('name', 'chosen')
@@ -88,7 +88,7 @@ def build(dram_base, dram_size, cmdline='', ramdisk=None):
     cpu0 = cpus.child('cpu0')
     cpu0.prop('name', 'cpu0')
     cpu0.prop('device_type', 'cpu')
-    cpu0.prop('compatible', 'arm,cortex-a53')
+    cpu0.prop('compatible', 'arm,cortex-a72')
     cpu0.prop('state', 'running')
     cpu0.prop('reg', struct.pack('<I', 0))
     cpu0.prop('timebase-frequency', struct.pack('<I', TIMEBASE_HZ))

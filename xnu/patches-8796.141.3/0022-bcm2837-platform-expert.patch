@@ -5,7 +5,7 @@ index 0000000..9b9e1fd
 +++ b/iokit/Kernel/arm/BCM2837PlatformExpert.cpp
 @@ -0,0 +1,86 @@
 +/*
-+ * Minimal device-tree platform expert for the Raspberry Pi 3 (BCM2837).
++ * Minimal device-tree platform expert for the Raspberry Pi 4 (BCM2711).
 + * Uses XNU's normal platform, power-domain and nub initialization. Hardware
 + * interrupt and power-management services are supplied by separate drivers.
 + */
@@ -76,7 +76,7 @@ index 0000000..9b9e1fd
 +	if (name == NULL || maxLength <= 0) {
 +		return false;
 +	}
-+	strlcpy(name, "bcm2837", (size_t)maxLength);
++	strlcpy(name, "bcm2711", (size_t)maxLength);
 +	return true;
 +}
 +
@@ -86,7 +86,7 @@ index 0000000..9b9e1fd
 +	if (name == NULL || maxLength <= 0) {
 +		return false;
 +	}
-+	strlcpy(name, "Raspberry Pi 3 Model B", (size_t)maxLength);
++	strlcpy(name, "Raspberry Pi 4 Model B", (size_t)maxLength);
 +	return true;
 +}
 +#endif /* ARM64_BOARD_CONFIG_BCM2837 */
@@ -102,7 +102,7 @@ index 2b14eda..7e436b4 100644
 +    "   {"
 +    "     'IOClass'         = BCM2837PlatformExpert;"
 +    "     'IOProviderClass' = IOPlatformExpertDevice;"
-+    "     'IONameMatch'     = 'raspberrypi,3-model-b';"
++    "     'IONameMatch'     = 'raspberrypi,4-model-b';"
 +    "     'IOProbeScore'    = 10000:32;"
 +    "   },"
 +#endif

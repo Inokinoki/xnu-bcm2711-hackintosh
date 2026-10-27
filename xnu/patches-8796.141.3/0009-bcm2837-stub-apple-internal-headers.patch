@@ -45,7 +45,7 @@ index 0000000..12e9af3
 +/*
 + * BCM2837: Apple's per-SoC CPU tunables (implementation-defined HID/ACC
 + * register settings applied in start.s) are not in the open source drop,
-+ * and none of them exist on the Cortex-A53. APPLY_TUNABLES does nothing.
++ * and none of them exist on the Cortex-A72. APPLY_TUNABLES does nothing.
 + */
 +.macro APPLY_TUNABLES midr, tmp1, tmp2
 +.endmacro

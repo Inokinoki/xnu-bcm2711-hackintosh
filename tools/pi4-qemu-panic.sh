@@ -1,10 +1,10 @@
 #!/bin/sh
-# Run a packed kernel on QEMU raspi3b under gdb and report the first panic:
+# Run a packed kernel on QEMU raspi4b under gdb and report the first panic:
 # the format string, its arguments and the caller.
 #
-#   tools/pi3-qemu-panic.sh KERNEL OUTDIR [BREAK_SYMBOL]
+#   tools/pi4-qemu-panic.sh KERNEL OUTDIR [BREAK_SYMBOL]
 #
-# OUTDIR is what tools/pi3-qemu-boot.sh left (loader.elf, payload.bin).
+# OUTDIR is what tools/pi4-qemu-boot.sh left (loader.elf, payload.bin).
 # Needs QEMU (qemu-system-aarch64) and GDB (gdb-multiarch).
 set -eu
 KERNEL=${1:?usage: $0 KERNEL OUTDIR [BREAK_SYMBOL]}
@@ -13,13 +13,15 @@ SYM=${3:-panic}
 QEMU=${QEMU:-qemu-system-aarch64}
 GDB=${GDB:-gdb-multiarch}
 HERE=$(cd "$(dirname "$0")" && pwd)
+PAYLOAD_PA=$(cat "$OUT/payload.pa")
+MEM=$(cat "$OUT/payload.mem")
 PORT=${PORT:-1234}
 
 ADDR=$(python3 "$HERE/macho_sym.py" "$KERNEL" -n "$SYM" | awk '{print $2}')
 [ "$ADDR" != "not" ] && [ -n "$ADDR" ] || { echo "no symbol $SYM"; exit 1; }
 
-timeout 120 "$QEMU" -M raspi3b -kernel "$OUT/loader.elf" \
-    -device loader,file="$OUT/payload.bin",addr=0x3c000000,force-raw=on \
+timeout 120 "$QEMU" -M raspi4b -cpu cortex-a72 -m "$MEM" -kernel "$OUT/loader.elf" \
+    -device loader,file="$OUT/payload.bin",addr=$PAYLOAD_PA,force-raw=on \
     -display none -serial null -serial file:"$OUT/uart1.gdb.log" \
     -S -gdb tcp::"$PORT" -no-reboot >/dev/null 2>&1 &
 QPID=$!

@@ -19,8 +19,8 @@ index fc2096f..a364f6a 100644
  /**
   * Ensure that 64-bit devices using 4K pages can nest the commpage completely
 - * above the maximum userspace VA.
-+ * above the maximum userspace VA. BCM2837 (Raspberry Pi 3) does not meet this
-+ * with its 1 GiB RAM layout; the nested commpage path is not verified on it yet.
++ * above the maximum userspace VA. BCM2837 (Raspberry Pi 4) does not meet this
++ * with its RAM layout; the nested commpage path is not verified on it yet.
   */
  static_assert((_COMM_PAGE64_BASE_ADDRESS & ~ARM_TT_L1_OFFMASK) >= MACH_VM_MAX_ADDRESS);
 +#endif /* !ARM64_BOARD_CONFIG_BCM2837 */

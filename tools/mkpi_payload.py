@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Pack the xnu kernel Mach-O for the BCM2837 loader (loader/payload.h).
+"""Pack the xnu kernel Mach-O for the BCM2711 loader (loader/payload.h).
 
   mkpi_payload.py KERNEL OUT [--cmdline "..."] [--ramdisk IMAGE]
 
-The kernel must have no chained fixups (the BCM2837 build has none); its
+The kernel must have no chained fixups (the BCM2711 build has none); its
 segments are copied as flat bytes to phys_base + (vmaddr - virt_base) by the
 loader. The payload is placed at PAYLOAD_PA by QEMU's loader device or the
 firmware-side copy, so its size must stay under the RAM the kernel gets.
@@ -22,7 +22,7 @@ SEG_TABLE = CMDLINE + BOOT_LINE_LENGTH	# 0x2a8
 # loader/main.c: the kernel's virtual base and the RAM it gets.
 VIRT_BASE = 0xfffffff006000000
 PHYS_BASE = 0x10000000
-MEM_SIZE = 0x2c000000
+MEM_SIZE = 0x60000000	# default: 2 GiB RAM; --mem-size overrides (see tools/pi4-qemu-boot.sh)
 
 
 def parse_macho(buf):
@@ -103,8 +103,11 @@ if __name__ == '__main__':
     ap.add_argument('kernel')
     ap.add_argument('out')
     ap.add_argument('--ramdisk', help='image placed in RAM, boot with rd=md0')
+    ap.add_argument('--mem-size', type=lambda x: int(x, 0), default=MEM_SIZE,
+                    help='RAM given to the kernel from PHYS_BASE (must end below the payload)')
     ap.add_argument('--cmdline', default='debug=0xc serial=3 cpus=1 keepsyms=1 kt_fixed_zones=120 -noprogress')
     a = ap.parse_args()
+    MEM_SIZE = a.mem_size
     blob, info = build(a.kernel, a.cmdline, a.ramdisk)
     open(a.out, 'wb').write(blob)
     for k, v in info.items():

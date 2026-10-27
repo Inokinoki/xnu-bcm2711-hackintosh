@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Build a small, read-only-style HFS+ root image from a directory, without mounting.
 
-  mkhfsroot.py DIR OUT.img [--size 8M] [--name BCM2837Root]
+  mkhfsroot.py DIR OUT.img [--size 8M] [--name BCM2711Root]
 
 For bring-up and tests (a handful of directories and regular files, no
 symlinks, hard links, xattrs or journal). The catalog is a single leaf node, so
@@ -212,7 +212,7 @@ if __name__ == '__main__':
     ap.add_argument('dir')
     ap.add_argument('out')
     ap.add_argument('--size', default='8M')
-    ap.add_argument('--name', default='BCM2837Root')
+    ap.add_argument('--name', default='BCM2711Root')
     a = ap.parse_args()
     size = parse_size(a.size) // BLOCK * BLOCK
     open(a.out, 'wb').write(build(a.dir.rstrip('/'), size, a.name))

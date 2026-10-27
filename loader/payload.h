@@ -16,7 +16,10 @@
 #pragma once
 #include <stdint.h>
 
-#define PAYLOAD_PA	0x3c000000UL
+/* Where the payload sits: the build passes -DPAYLOAD_PA (top of RAM minus 256 MiB). */
+#ifndef PAYLOAD_PA
+#define PAYLOAD_PA	0x70000000UL	/* 2 GiB RAM */
+#endif
 #define PAYLOAD_MAGIC	"PIXNUPL1"
 #define BOOT_LINE_LENGTH	608
 #define PAGE_16K	0x4000UL

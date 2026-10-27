@@ -1,12 +1,12 @@
 /*
- * Raspberry Pi 3 (BCM2837) loader: copy the xnu kernel that tools/mkpi_payload.py
+ * Raspberry Pi 4 (BCM2711) loader: copy the xnu kernel that tools/mkpi_payload.py
  * packed at PAYLOAD_PA into RAM, build boot_args and a minimal ADT behind it, and
  * jump to the kernel's entry point with the MMU and caches off, x0 = boot_args.
  */
 #include <stdint.h>
 #include "payload.h"
 
-#define MMIO_BASE	0x3f000000UL
+#define MMIO_BASE	0xfe000000UL
 #define AUX_ENABLES	(MMIO_BASE + 0x215004)
 #define AUX_MU_IO	(MMIO_BASE + 0x215040)
 #define AUX_MU_IER	(MMIO_BASE + 0x215044)
@@ -17,13 +17,16 @@
 #define AUX_MU_CNTL	(MMIO_BASE + 0x215060)
 #define AUX_MU_BAUD	(MMIO_BASE + 0x215068)
 #define GPFSEL1		(MMIO_BASE + 0x200004)
-#define GPPUD		(MMIO_BASE + 0x200094)
-#define GPPUDCLK0	(MMIO_BASE + 0x200098)
+/* BCM2711 replaced GPPUD/GPPUDCLK by per-pin pull controls: 2 bits each, 0 = none */
+#define GPIO_PUP_PDN0	(MMIO_BASE + 0x2000e4)	/* GPIO0..15; GPIO14 = [29:28], GPIO15 = [31:30] */
 
+/* BCM2711 "rng200" (iproc), as Linux's iproc-rng200.c drives it. QEMU raspi4b has no RNG. */
 #define RNG_BASE	(MMIO_BASE + 0x104000)
 #define RNG_CTRL	(RNG_BASE + 0x00)
-#define RNG_STATUS	(RNG_BASE + 0x04)
-#define RNG_DATA	(RNG_BASE + 0x08)
+#define RNG_SOFT_RESET	(RNG_BASE + 0x04)
+#define RBG_SOFT_RESET	(RNG_BASE + 0x08)
+#define RNG_FIFO_DATA	(RNG_BASE + 0x20)
+#define RNG_FIFO_COUNT	(RNG_BASE + 0x24)
 
 #define mmio_w(a, v)	(*(volatile uint32_t *)(a) = (uint32_t)(v))
 #define mmio_r(a)	(*(volatile uint32_t *)(a))
@@ -31,7 +34,6 @@
 /* Kernel placement: virt_base is 32 MB below the Mach-O header (16K L2 block). */
 #define KERNEL_VIRT_BASE	0xfffffff006000000ULL
 #define KERNEL_PHYS_BASE	0x10000000ULL
-#define KERNEL_MEM_SIZE		0x2c000000ULL	/* 0x10000000..0x3c000000, below the payload */
 
 static void uart_init(void)
 {
@@ -41,16 +43,12 @@ static void uart_init(void)
 	mmio_w(AUX_MU_MCR, 0);
 	mmio_w(AUX_MU_IER, 0);
 	mmio_w(AUX_MU_IIR, 0xc6);
-	mmio_w(AUX_MU_BAUD, 270);
+	mmio_w(AUX_MU_BAUD, 270);		/* 115200 at a 250 MHz core clock (core_freq=250), as the kernel driver assumes */
 	uint32_t r = mmio_r(GPFSEL1);
 	r &= ~((7u << 12) | (7u << 15));
 	r |= (2u << 12) | (2u << 15);		/* GPIO14/15 = ALT5 */
 	mmio_w(GPFSEL1, r);
-	mmio_w(GPPUD, 0);
-	for (volatile int i = 0; i < 150; i++) ;
-	mmio_w(GPPUDCLK0, (1u << 14) | (1u << 15));
-	for (volatile int i = 0; i < 150; i++) ;
-	mmio_w(GPPUDCLK0, 0);
+	mmio_w(GPIO_PUP_PDN0, mmio_r(GPIO_PUP_PDN0) & ~(0xfu << 28));
 	mmio_w(AUX_MU_CNTL, 3);
 }
 
@@ -104,8 +102,8 @@ static void zero64(uintptr_t dst, uint64_t n)
 }
 
 /*
- * Fill the 64-byte /chosen/random-seed the kernel's PRNG needs. The BCM2835 RNG
- * is used when it produces data; otherwise a counter-based mix, which is NOT
+ * Fill the 64-byte /chosen/random-seed the kernel's PRNG needs. The rng200 is used
+ * when built with -DUSE_RNG200 (real hardware); otherwise a counter-based mix, which is NOT
  * secure and only for bring-up.
  */
 static uint64_t cntpct(void)
@@ -117,21 +115,27 @@ static uint64_t cntpct(void)
 
 static void fill_seed(uint8_t *dst, uint32_t n)
 {
-	mmio_w(RNG_STATUS, 0x40000);
+	int hw = 0;
+#ifdef USE_RNG200
+	/* Real Pi 4 only: QEMU raspi4b has no device at RNG_BASE and the access aborts. */
+	mmio_w(RNG_SOFT_RESET, 1);
+	mmio_w(RBG_SOFT_RESET, 1);
+	mmio_w(RNG_SOFT_RESET, 0);
+	mmio_w(RBG_SOFT_RESET, 0);
 	mmio_w(RNG_CTRL, 1);
-	int hw = 1;
-	for (uint32_t i = 0; i < n; i += 4) {
-		uint32_t w = 0;
+	hw = 1;
+	for (uint32_t i = 0; i < n && hw; i += 4) {
 		uint32_t tries = 0;
-		while (!(mmio_r(RNG_STATUS) >> 24) && tries++ < 0x100000) ;
-		if (!(mmio_r(RNG_STATUS) >> 24)) {
+		while ((mmio_r(RNG_FIFO_COUNT) & 0xff) == 0 && tries++ < 0x100000) ;
+		if ((mmio_r(RNG_FIFO_COUNT) & 0xff) == 0) {
 			hw = 0;
 			break;
 		}
-		w = mmio_r(RNG_DATA);
+		uint32_t w = mmio_r(RNG_FIFO_DATA);
 		for (int k = 0; k < 4 && i + k < n; k++)
 			dst[i + k] = (w >> (8 * k)) | 1;	/* never zero: the kernel rejects all-null seeds */
 	}
+#endif
 	if (!hw) {
 		uint64_t x = cntpct() ^ 0x9e3779b97f4a7c15ULL;
 		for (uint32_t i = 0; i < n; i++) {
@@ -140,7 +144,7 @@ static void fill_seed(uint8_t *dst, uint32_t n)
 		}
 		uart_puts("[loader] random-seed: counter fallback (not secure)\n");
 	} else {
-		uart_puts("[loader] random-seed: BCM2835 RNG\n");
+		uart_puts("[loader] random-seed: BCM2711 rng200\n");
 	}
 }
 
@@ -179,7 +183,7 @@ void loader_main(uint64_t dtb)
 {
 	(void)dtb;
 	uart_init();
-	uart_puts("\n[loader] PIXNU loader, BCM2837\n");
+	uart_puts("\n[loader] PIXNU loader, BCM2711\n");
 
 	const struct payload *p = (const struct payload *)PAYLOAD_PA;
 	if (!magic_ok(p->magic)) {
@@ -196,7 +200,7 @@ void loader_main(uint64_t dtb)
 	uart_line("entry_va", p->entry_va);
 	uart_line("nsegs", p->nsegs);
 
-	if (p->phys_base != KERNEL_PHYS_BASE || p->virt_base != KERNEL_VIRT_BASE) {
+	if (p->phys_base != KERNEL_PHYS_BASE || p->phys_base + p->mem_size > PAYLOAD_PA || p->virt_base != KERNEL_VIRT_BASE) {
 		uart_puts("[loader] payload placement does not match this loader\n");
 		return;
 	}

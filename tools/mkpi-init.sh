@@ -4,7 +4,7 @@
 #   [CC=aarch64-linux-gnu-gcc] [OBJCOPY=aarch64-linux-gnu-objcopy] tools/mkpi-init.sh OUT
 #
 # mockfs serves a RAM disk that is itself a Mach-O as /sbin/launchd, so this
-# image is a complete root: RAMDISK=OUT tools/pi3-qemu-boot.sh KERNEL
+# image is a complete root: RAMDISK=OUT tools/pi4-qemu-boot.sh KERNEL
 set -eu
 OUT=${1:?usage: $0 OUT}
 CC=${CC:-aarch64-linux-gnu-gcc}

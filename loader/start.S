@@ -1,5 +1,5 @@
 /*
- * BCM2837 loader entry. QEMU's raspi3b (and the Pi firmware) start the image
+ * BCM2711 loader entry. QEMU's raspi4b (and the Pi firmware) start the image
  * at 0x80000 with x0 = DTB; the kernel wants EL1 with the MMU and caches off.
  * Park every core but 0, drop EL2 -> EL1 if needed, then run loader_main().
  */
@@ -10,8 +10,8 @@ _start:
 	and	x1, x1, #3
 	cbnz	x1, .Lpark
 
-	/* Pi 3 generic timer: 19.2 MHz (also written into the ADT timebase-frequency) */
-	ldr	x1, =19200000
+	/* Pi 4 generic timer: 54 MHz (also written into the ADT timebase-frequency) */
+	ldr	x1, =54000000
 	msr	cntfrq_el0, x1
 
 	mrs	x1, CurrentEL
