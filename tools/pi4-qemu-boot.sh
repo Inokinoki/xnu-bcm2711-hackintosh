@@ -57,7 +57,7 @@ timeout "$SECS" "$QEMU" -M raspi4b -cpu cortex-a72 -m "${QEMU_M:-$MEM}" -kernel 
     -device loader,file="$OUT/payload.bin",addr=$PAYLOAD_PA,force-raw=on \
     ${SDIMG:+-drive file="$SDIMG",if=sd,format=raw} \
     -display none -serial null -serial file:"$OUT/uart1.log" \
-    -D "$OUT/qemu.log" -d int,guest_errors -no-reboot
+    -D "$OUT/qemu.log" -d ${QEMU_D:-guest_errors} -no-reboot
 rc=$?
 set -e
 echo "qemu exit=$rc (124 = still running at the timeout)"

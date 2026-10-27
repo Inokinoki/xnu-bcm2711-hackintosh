@@ -28,6 +28,23 @@
 #define RNG_FIFO_DATA	(RNG_BASE + 0x20)
 #define RNG_FIFO_COUNT	(RNG_BASE + 0x24)
 
+/*
+ * GIC-400 (BCM2711). The architected timer is a PPI routed through it, not through
+ * the BCM2836 local controller of the Pi 3: without this the kernel never gets a tick.
+ * xnu's timer handler is the FIQ one (sleh_fiq); the IRQ handler pointer is NULL here.
+ * The kernel has no GIC driver yet, so enable the boot CPU's interface and the
+ * timer PPIs here; the kernel never acknowledges them, the level source is masked
+ * by the timer code as on the Pi 3.
+ */
+#define GICD_BASE	0xff841000UL
+#define GICC_BASE	0xff842000UL
+#define GICD_CTLR	(GICD_BASE + 0x000)
+#define GICD_IGROUPR0	(GICD_BASE + 0x080)
+#define GICD_ISENABLER0	(GICD_BASE + 0x100)
+#define GICD_IPRIORITYR(n)	(GICD_BASE + 0x400 + (n))
+#define GICC_CTLR	(GICC_BASE + 0x000)
+#define GICC_PMR	(GICC_BASE + 0x004)
+
 #define mmio_w(a, v)	(*(volatile uint32_t *)(a) = (uint32_t)(v))
 #define mmio_r(a)	(*(volatile uint32_t *)(a))
 
@@ -177,6 +194,18 @@ static int magic_ok(const char *m)
 	return 1;
 }
 
+static void gic_init(void)
+{
+	mmio_w(GICD_CTLR, 0);
+	mmio_w(GICD_IGROUPR0, 0);			/* banked interrupts: group 0 = FIQ, which is where xnu takes its timer */
+	for (int i = 24; i < 32; i += 4)
+		mmio_w(GICD_IPRIORITYR(i), 0x80808080u);
+	mmio_w(GICD_ISENABLER0, (1u << 30) | (1u << 29) | (1u << 27) | (1u << 26));	/* phys, sec phys, virt, hyp timers */
+	mmio_w(GICD_CTLR, 1);
+	mmio_w(GICC_PMR, 0xff);
+	mmio_w(GICC_CTLR, 1 | (1u << 3));		/* enable group 0, signal it as FIQ */
+}
+
 typedef void (*kernel_entry_t)(uint64_t boot_args_pa);
 
 void loader_main(uint64_t dtb)
@@ -236,6 +265,7 @@ void loader_main(uint64_t dtb)
 	for (int i = 0; i < BOOT_LINE_LENGTH; i++)
 		ba->CommandLine[i] = p->cmdline[i];
 	ba->memSizeActual = p->mem_size;
+	gic_init();
 	uart_line("boot_args", ba_pa);
 	uart_line("jump", p->entry_va + pa_of_va);
 

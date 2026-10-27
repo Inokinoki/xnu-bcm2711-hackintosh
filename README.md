@@ -14,6 +14,14 @@ Fork point: upstream `rootfs-ramdisk` (xnu-8796.141.3, HFS+ RAM disk root, SD ro
   `kernel.development.bcm2837`, patches 0001-0039): VM, zones, IOKit, the platform expert and the boot CPU come up
   (`BCM2837 CPU: boot CPU 0 registered`), the same point the Pi 3 port reaches. Checked twice with the default
   layout (kernel gets ~1.5 GiB).
+- **Userspace runs on `raspi4b -m 2G`**: with an HFS+ RAM disk root (`rd=md0`) the kernel mounts it, execs the test
+  PID 1 and it prints `*** BCM2711 userspace: init running as PID 1 ***` then `still alive` every second
+  (loader with the GIC setup below, 150 s run). The root needs a `dev/` directory, or `devfs_kernel_mount` fails (errno 2)
+  and PID 1 cannot open `/dev/console`.
+- **Timer interrupts: the loader sets up the GIC-400.** On `raspi4b` the architected timer is a GIC PPI, not a BCM2836
+  local-controller interrupt as on the Pi 3, and xnu takes its timer as a FIQ (its IRQ handler pointer is NULL). Without
+  the setup the kernel booted but stalled after `boot CPU 0 registered`. `loader/main.c` `gic_init()` puts the timer PPIs
+  in group 0 and enables FIQ signalling. A real GIC driver in the kernel is still to do.
 - Patch 0039 fixed the earlier `kmem_range_init: vm_map_locate_space failing` panic above ~1 GiB: the macOS compressor
   pool is 16x RAM, which plus the 24 GiB zone map overflowed the 48 GiB kernel map.
 - Boot args now include `wdt=-1`: QEMU is slow enough to trip the interrupts-disabled watchdog otherwise.
@@ -33,7 +41,7 @@ upstream xnu sources still match, the patches change what it means.
 # kernel: push, then GitHub Actions "xnu-8796.141.3-bcm2711" -> artifact xnu-8796.141.3-bcm2711-kernel
 # loader + payload + QEMU (needs aarch64 clang/gcc, qemu-system-aarch64 with raspi4b, python3):
 MEM=2G tools/pi4-qemu-boot.sh KERNEL 60                  # runs: qemu-system-aarch64 -machine raspi4b -cpu cortex-a72 -m 2G ...
-RAMDISK=root.img MEM=2G tools/pi4-qemu-boot.sh KERNEL    # HFS+ root: tools/mkpi-init.sh + tools/mkhfsroot.py as before
+RAMDISK=root.img MEM=2G tools/pi4-qemu-boot.sh KERNEL    # HFS+ root: mkdir -p root/sbin root/dev; tools/mkpi-init.sh root/sbin/launchd; tools/mkhfsroot.py root root.img
 SDIMG=sd.img tools/pi4-qemu-boot.sh KERNEL               # rd=sdroot0
 # validate the loader without a kernel build:
 MEM=2G CC="clang --target=aarch64-linux-gnu" OBJCOPY=llvm-objcopy tools/pi4-selftest.sh
