@@ -3,7 +3,7 @@
 #
 #   [RAMDISK=image | SDIMG=image] [CMDLINE=...] tools/pi4-qemu-boot.sh KERNEL [SECONDS]
 #
-# MEM (default 4G) is the -m value and sets the layout: RAM is 0..MEM minus the
+# MEM (default 2G) is the -m value and sets the layout: RAM is 0..MEM minus the
 # peripheral window at 0xfc000000, the payload sits 256 MiB below the top of
 # that, and the kernel gets 0x10000000 up to the payload. QEMU 9.0 only accepts
 # -m 2G for raspi4b ("Invalid RAM size, should be 2 GiB"); 4G needs a newer QEMU.
@@ -18,7 +18,7 @@ CC=${CC:-aarch64-linux-gnu-gcc}
 QEMU=${QEMU:-qemu-system-aarch64}
 HERE=$(cd "$(dirname "$0")/.." && pwd)
 OUT=${OUT:-$HERE/build/qemu-pi4}
-MEM=${MEM:-4G}
+MEM=${MEM:-2G}
 case "$MEM" in
     1G) TOP=0x40000000 ;; 2G) TOP=0x80000000 ;; 4G|8G) TOP=0xfc000000 ;;
     *) echo "MEM must be 1G, 2G, 4G or 8G"; exit 1 ;;

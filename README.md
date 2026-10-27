@@ -28,16 +28,16 @@ upstream xnu sources still match, the patches change what it means.
 ```
 # kernel: push, then GitHub Actions "xnu-8796.141.3-bcm2711" -> artifact xnu-8796.141.3-bcm2711-kernel
 # loader + payload + QEMU (needs aarch64 clang/gcc, qemu-system-aarch64 with raspi4b, python3):
-MEM=4G tools/pi4-qemu-boot.sh KERNEL 60                  # runs: qemu-system-aarch64 -machine raspi4b -cpu cortex-a72 -m 4G ...
-RAMDISK=root.img MEM=4G tools/pi4-qemu-boot.sh KERNEL    # HFS+ root: tools/mkpi-init.sh + tools/mkhfsroot.py as before
+MEM=2G tools/pi4-qemu-boot.sh KERNEL 60                  # runs: qemu-system-aarch64 -machine raspi4b -cpu cortex-a72 -m 2G ...
+RAMDISK=root.img MEM=2G tools/pi4-qemu-boot.sh KERNEL    # HFS+ root: tools/mkpi-init.sh + tools/mkhfsroot.py as before
 SDIMG=sd.img tools/pi4-qemu-boot.sh KERNEL               # rd=sdroot0
 # validate the loader without a kernel build:
 MEM=2G CC="clang --target=aarch64-linux-gnu" OBJCOPY=llvm-objcopy tools/pi4-selftest.sh
 ```
 
-Equivalent to `qemu-system-aarch64 -machine raspi4b -cpu cortex-a72 -m 4G -kernel loader.elf -device loader,file=payload.bin,addr=PAYLOAD_PA,force-raw=on -serial null -serial file:uart1.log`.
+Equivalent to `qemu-system-aarch64 -machine raspi4b -cpu cortex-a72 -m 2G -kernel loader.elf -device loader,file=payload.bin,addr=PAYLOAD_PA,force-raw=on -serial null -serial file:uart1.log`.
 Memory layout: RAM from `0x10000000`; the payload sits 256 MiB under the top of RAM (below the `0xfc000000`
-peripheral window on 4G) and the kernel gets everything in between (about 3.4 GiB with `-m 4G`).
+peripheral window on 4G) and the kernel gets everything in between (about 1.5 GiB with `-m 2G`, about 3.4 GiB with 4G).
 
 ## Upstream roadmap (Pi 3 port, carried over)
 
