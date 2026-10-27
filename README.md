@@ -44,7 +44,7 @@ peripheral window on 4G) and the kernel gets everything in between (about 3.4 Gi
 
 XNU Kernel:
 
-- [x] Compile Mach-O (xnu-8796.141.3, `xnu/patches-8796.141.3/`, built by `.github/workflows/xnu-8796.141.3-bcm2837.yml`)
+- [x] Compile Mach-O (xnu-8796.141.3, `xnu/patches-8796.141.3/`, built by `.github/workflows/xnu-8796.141.3-bcm2711.yml`)
 - [x] Mach-O loader (`loader/`): EL3/EL2 to EL1, copy the segments, boot_args and a minimal ADT, jump
 - [x] Make sure the kernel is bootable (on QEMU `raspi4b`; real hardware untested)
 - [x] Make sure UART works (the mini UART, set up without an ADT)
@@ -64,8 +64,8 @@ Hackintosh:
 - `tools/mkpi_payload.py` packs the kernel Mach-O, a generated ADT (`tools/pi_adt.py`) and the
   command line; `loader/` is the Pi-side image that unpacks it.
 - `tools/pi4-qemu-boot.sh KERNEL [SECONDS]` builds the loader, packs the kernel and boots QEMU
-  `raspi3b`; the kernel console is QEMU's second serial port (the mini UART).
-  `tools/pi3-qemu-panic.sh` catches the first panic under gdb; `tools/macho_sym.py` looks up symbols.
+  `raspi4b`; the kernel console is QEMU's second serial port (the mini UART).
+  `tools/pi4-qemu-panic.sh` catches the first panic under gdb; `tools/macho_sym.py` looks up symbols.
 
 Needs: an aarch64 gcc, `qemu-system-aarch64`, `gdb-multiarch` (optional) and Python 3.
 
