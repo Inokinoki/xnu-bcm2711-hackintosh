@@ -105,7 +105,7 @@ if __name__ == '__main__':
     ap.add_argument('--ramdisk', help='image placed in RAM, boot with rd=md0')
     ap.add_argument('--mem-size', type=lambda x: int(x, 0), default=MEM_SIZE,
                     help='RAM given to the kernel from PHYS_BASE (must end below the payload)')
-    ap.add_argument('--cmdline', default='debug=0xc serial=3 cpus=1 keepsyms=1 kt_fixed_zones=120 -noprogress')
+    ap.add_argument('--cmdline', default='debug=0xc serial=3 cpus=1 wdt=-1 keepsyms=1 kt_fixed_zones=120 -noprogress')
     a = ap.parse_args()
     MEM_SIZE = a.mem_size
     blob, info = build(a.kernel, a.cmdline, a.ramdisk)

@@ -24,7 +24,7 @@ case "$MEM" in
     *) echo "MEM must be 1G, 2G, 4G or 8G"; exit 1 ;;
 esac
 PAYLOAD_PA=$((TOP - 0x10000000))
-MEM_SIZE=$((PAYLOAD_PA - 0x10000000))
+MEM_SIZE=${MEM_SIZE:-$((PAYLOAD_PA - 0x10000000))}
 mkdir -p "$OUT"
 
 # 1. loader (loader/*.S, loader/*.c, loader/link.ld) at 0x80000
@@ -40,10 +40,10 @@ $CC -nostdlib -static -T "$HERE/loader/link.ld" -o "$OUT/loader.elf" "$OUT/start
 set -- "$KERNEL" "$OUT/payload.bin" --mem-size "$MEM_SIZE"
 if [ -n "${RAMDISK:-}" ]; then
     set -- "$@" --ramdisk "$RAMDISK"
-    : "${CMDLINE:=debug=0xc serial=3 cpus=1 keepsyms=1 kt_fixed_zones=120 -noprogress rd=md0}"
+    : "${CMDLINE:=debug=0xc serial=3 cpus=1 wdt=-1 keepsyms=1 kt_fixed_zones=120 -noprogress rd=md0}"
 fi
 if [ -n "${SDIMG:-}" ]; then
-    : "${CMDLINE:=debug=0xc serial=3 cpus=1 keepsyms=1 kt_fixed_zones=120 -noprogress rd=sdroot0}"
+    : "${CMDLINE:=debug=0xc serial=3 cpus=1 wdt=-1 keepsyms=1 kt_fixed_zones=120 -noprogress rd=sdroot0}"
 fi
 [ -n "${CMDLINE:-}" ] && set -- "$@" --cmdline "$CMDLINE"
 python3 "$HERE/tools/mkpi_payload.py" "$@"
@@ -53,7 +53,7 @@ echo "$MEM" > "$OUT/payload.mem"
 # 3. run; QEMU's generic loader puts the payload at PAYLOAD_PA
 rm -f "$OUT/uart1.log"
 set +e
-timeout "$SECS" "$QEMU" -M raspi4b -cpu cortex-a72 -m "$MEM" -kernel "$OUT/loader.elf" \
+timeout "$SECS" "$QEMU" -M raspi4b -cpu cortex-a72 -m "${QEMU_M:-$MEM}" -kernel "$OUT/loader.elf" \
     -device loader,file="$OUT/payload.bin",addr=$PAYLOAD_PA,force-raw=on \
     ${SDIMG:+-drive file="$SDIMG",if=sd,format=raw} \
     -display none -serial null -serial file:"$OUT/uart1.log" \

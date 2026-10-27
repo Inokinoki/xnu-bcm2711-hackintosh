@@ -10,9 +10,15 @@ Fork point: upstream `rootfs-ramdisk` (xnu-8796.141.3, HFS+ RAM disk root, SD ro
 - **Loader + packing on QEMU `raspi4b`: works.** `tools/pi4-selftest.sh` boots the loader with a stand-in kernel
   (`tools/pi-selftest.S`) and sees the loader banner, correct `boot_args`, the command line, a write/read at the top
   of the kernel's RAM window and `SELFTEST PASS` on the mini UART (checked with `-m 2G`).
-- **The kernel for BCM2711 has not been built or booted yet.** The patches in `xnu/patches-8796.141.3/` were
-  retargeted by hand (UART/EMMC addresses, `-mcpu=cortex-a72`, platform expert matching `raspberrypi,4-model-b`,
-  CPU matching `arm,cortex-a72`) but no CI run has happened. Needs a macOS runner (`.github/workflows/xnu-8796.141.3-bcm2711.yml`).
+- **The BCM2711 kernel builds** (CI run 40557062839, artifact `xnu-8796.141.3-bcm2711-kernel`, file `kernel.development.bcm2837`)
+  **and boots on `raspi4b -cpu cortex-a72 -m 2G` when the kernel is given up to 1 GiB** (`MEM_SIZE=0x40000000`):
+  VM, zones, IOKit, the platform expert and the boot CPU all come up (`BCM2837 CPU: boot CPU 0 registered`), the same
+  point the Pi 3 port reaches. Retargeting by hand worked on the first CI run.
+- **Open: with 1.25 GiB or more for the kernel (the 2G default is ~1.5 GiB), it panics early** with
+  `kmem_range_init: vm_map_locate_space failing for claim <zones|compressor|kmem_*_range>` (vm_kern.c:3645). The claim
+  varies per run, so it is the kernel VA layout (claims sized to fill the largest hole; more RAM = bigger physmap
+  in the 39-bit window), not one claim. Until fixed: `MEM_SIZE=0x40000000 MEM=2G tools/pi4-qemu-boot.sh KERNEL`.
+- Boot args now include `wdt=-1`: QEMU is slow enough to trip the interrupts-disabled watchdog otherwise.
 - **`-m 4G` needs a newer QEMU than 9.0.90**, which refuses it (`Invalid RAM size, should be 2 GiB`). The layout code
   supports 1G/2G/4G/8G but only 2G has been run.
 - Real Pi 4 hardware: untested. Known open points: mini UART baud (kernel driver assumes `core_freq=250`),
