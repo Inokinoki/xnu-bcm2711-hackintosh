@@ -82,6 +82,13 @@ def build(dram_base, dram_size, cmdline='', ramdisk=None):
     arm_io.prop('device_type', 'arm-io')
     arm_io.prop('ranges', struct.pack('<3Q', 0x0, BCM283X_PERIPH_BASE, BCM283X_PERIPH_SIZE))
 
+    # GIC-400: the BCM2711GIC driver reads the two base addresses (outside arm-io's ranges).
+    gic = root.child('gic')
+    gic.prop('name', 'gic')
+    gic.prop('compatible', 'arm,gic-400')
+    gic.prop('gic-dist-base', 0xFF841000)
+    gic.prop('gic-cpu-base', 0xFF842000)
+
     # pe_identify_machine(): a running CPU supplies the timebase frequency.
     cpus = root.child('cpus')
     cpus.prop('name', 'cpus')

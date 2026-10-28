@@ -1,0 +1,307 @@
+diff --git a/iokit/Kernel/arm/BCM2711GIC.cpp b/iokit/Kernel/arm/BCM2711GIC.cpp
+new file mode 100644
+index 0000000..1f658d2
+--- /dev/null
++++ b/iokit/Kernel/arm/BCM2711GIC.cpp
+@@ -0,0 +1,274 @@
++/*
++ * GIC-400 interrupt controller driver for the Raspberry Pi 4 (BCM2711).
++ *
++ * The architected timer is a GIC PPI on this SoC and xnu takes it as a FIQ, so the
++ * timer PPIs (26, 27, 29, 30) stay in group 0 (FIQ, set up by the loader before the
++ * kernel runs). Everything else, SGIs and SPIs, is group 1 and arrives as an IRQ:
++ * the driver installs itself as the boot CPU's IRQ handler, acknowledges and
++ * dispatches to the vectors IOKit registers (standard IOInterruptController
++ * contract), and signals end of interrupt. Single CPU (target list 0x01).
++ *
++ * Start-up runs a self-test: SGI 1 sent to the boot CPU must come back through
++ * the IRQ path and the registered vector.
++ */
++#include <pexpert/arm64/board_config.h>
++
++#if defined(ARM64_BOARD_CONFIG_BCM2837)
++#include <IOKit/IOInterruptController.h>
++#include <IOKit/IOInterrupts.h>
++#include <IOKit/IOPlatformExpert.h>
++#include <IOKit/IOLib.h>
++#include <libkern/c++/OSData.h>
++#include <libkern/c++/OSSymbol.h>
++#include <machine/machine_routines.h>
++
++#define GICD_CTLR       0x000
++#define GICD_TYPER      0x004
++#define GICD_IGROUPR(n)     (0x080 + 4 * (n))
++#define GICD_ISENABLER(n)   (0x100 + 4 * (n))
++#define GICD_ICENABLER(n)   (0x180 + 4 * (n))
++#define GICD_ISPENDR(n)     (0x200 + 4 * (n))
++#define GICD_ICPENDR(n)     (0x280 + 4 * (n))
++#define GICD_IPRIORITYR(n)  (0x400 + 4 * (n))   /* 4 interrupts per register */
++#define GICD_ITARGETSR(n)   (0x800 + 4 * (n))
++#define GICD_ICFGR(n)       (0xc00 + 4 * (n))
++#define GICD_SGIR       0xf00
++
++#define GICC_CTLR       0x000
++#define GICC_PMR        0x004
++#define GICC_IAR        0x00c
++#define GICC_EOIR       0x010
++
++#define GIC_TIMER_PPIS  ((1u << 26) | (1u << 27) | (1u << 29) | (1u << 30))
++#define GIC_MAX_VECTORS 256
++#define GIC_SPURIOUS    1020
++
++class BCM2711GIC : public IOInterruptController {
++	OSDeclareDefaultStructors(BCM2711GIC);
++
++	volatile uint8_t *dist = NULL;
++	volatile uint8_t *cpuif = NULL;
++	uint32_t numVectors = 0;
++
++	uint32_t
++	dr(uint32_t off)
++	{
++		return *(volatile uint32_t *)(dist + off);
++	}
++	void
++	dw(uint32_t off, uint32_t v)
++	{
++		*(volatile uint32_t *)(dist + off) = v;
++	}
++	uint32_t
++	cr(uint32_t off)
++	{
++		return *(volatile uint32_t *)(cpuif + off);
++	}
++	void
++	cw(uint32_t off, uint32_t v)
++	{
++		*(volatile uint32_t *)(cpuif + off) = v;
++	}
++
++	void hwInit(void);
++	bool selfTest(void);
++
++public:
++	bool start(IOService *provider) APPLE_KEXT_OVERRIDE;
++	IOReturn handleInterrupt(void *refCon, IOService *nub, int source) APPLE_KEXT_OVERRIDE;
++	void initVector(IOInterruptVectorNumber vectorNumber, IOInterruptVector *vector) APPLE_KEXT_OVERRIDE;
++	int getVectorType(IOInterruptVectorNumber vectorNumber, IOInterruptVector *vector) APPLE_KEXT_OVERRIDE;
++	void disableVectorHard(IOInterruptVectorNumber vectorNumber, IOInterruptVector *vector) APPLE_KEXT_OVERRIDE;
++	void enableVector(IOInterruptVectorNumber vectorNumber, IOInterruptVector *vector) APPLE_KEXT_OVERRIDE;
++	void causeVector(IOInterruptVectorNumber vectorNumber, IOInterruptVector *vector) APPLE_KEXT_OVERRIDE;
++};
++
++OSDefineMetaClassAndStructors(BCM2711GIC, IOInterruptController);
++
++static volatile uint32_t gic_selftest_hits;
++
++static void
++gic_selftest_handler(void *target __unused, void *refCon __unused, void *nub __unused, int source __unused)
++{
++	gic_selftest_hits++;
++}
++
++void
++BCM2711GIC::hwInit(void)
++{
++	uint32_t lines = ((dr(GICD_TYPER) & 0x1f) + 1) * 32;
++
++	numVectors = lines > GIC_MAX_VECTORS ? GIC_MAX_VECTORS : lines;
++	dw(GICD_CTLR, 0);
++
++	/* SGIs and PPIs: group 1 (IRQ) except the timers, which stay group 0 (FIQ) and enabled. */
++	dw(GICD_IGROUPR(0), ~GIC_TIMER_PPIS);
++	dw(GICD_ICENABLER(0), ~GIC_TIMER_PPIS);
++	dw(GICD_ICPENDR(0), ~GIC_TIMER_PPIS);
++	for (uint32_t i = 0; i < 8; i++) {
++		dw(GICD_IPRIORITYR(i), 0xa0a0a0a0);
++	}
++
++	/* SPIs: group 1, disabled, not pending, mid priority, routed to CPU 0. */
++	for (uint32_t n = 1; n < numVectors / 32; n++) {
++		dw(GICD_IGROUPR(n), 0xffffffff);
++		dw(GICD_ICENABLER(n), 0xffffffff);
++		dw(GICD_ICPENDR(n), 0xffffffff);
++	}
++	for (uint32_t i = 8; i < numVectors / 4; i++) {
++		dw(GICD_IPRIORITYR(i), 0xa0a0a0a0);
++		dw(GICD_ITARGETSR(i), 0x01010101);
++	}
++
++	dw(GICD_CTLR, 3);               /* enable group 0 and group 1 */
++	cw(GICC_PMR, 0xff);
++	cw(GICC_CTLR, 1 | 2 | (1u << 3));       /* groups 0 and 1; group 0 is signalled as FIQ */
++}
++
++bool
++BCM2711GIC::selfTest(void)
++{
++	IOInterruptVector *v = &vectors[1];
++
++	IOLockLock(v->interruptLock);
++	v->handler = gic_selftest_handler;
++	v->target = NULL;
++	v->refCon = NULL;
++	v->nub = NULL;
++	v->source = 0;
++	v->interruptDisabledSoft = 0;
++	v->interruptDisabledHard = 0;
++	v->interruptRegistered = 1;
++	IOLockUnlock(v->interruptLock);
++
++	gic_selftest_hits = 0;
++	dw(GICD_ISENABLER(0), 1u << 1);
++	dw(GICD_SGIR, (2u << 24) | 1);  /* SGI 1 to the requesting CPU */
++	for (int i = 0; i < 100 && gic_selftest_hits == 0; i++) {
++		IODelay(1000);
++	}
++
++	dw(GICD_ICENABLER(0), 1u << 1);
++	IOLockLock(v->interruptLock);
++	v->interruptRegistered = 0;
++	v->handler = NULL;
++	IOLockUnlock(v->interruptLock);
++	return gic_selftest_hits == 1;
++}
++
++bool
++BCM2711GIC::start(IOService *provider)
++{
++	OSData *d = OSDynamicCast(OSData, provider->getProperty("gic-dist-base"));
++	OSData *c = OSDynamicCast(OSData, provider->getProperty("gic-cpu-base"));
++
++	if (d == NULL || c == NULL || d->getLength() != 8 || c->getLength() != 8) {
++		IOLog("BCM2711 GIC: no gic-dist-base/gic-cpu-base in the device tree\n");
++		return false;
++	}
++	if (!IOInterruptController::start(provider)) {
++		return false;
++	}
++	dist = (volatile uint8_t *)ml_io_map((vm_offset_t) * (const uint64_t *)d->getBytesNoCopy(), 0x1000);
++	cpuif = (volatile uint8_t *)ml_io_map((vm_offset_t) * (const uint64_t *)c->getBytesNoCopy(), 0x2000);
++	if (dist == NULL || cpuif == NULL) {
++		return false;
++	}
++
++	hwInit();
++
++	vectors = IONewZero(IOInterruptVector, numVectors);
++	if (vectors == NULL) {
++		return false;
++	}
++	for (uint32_t i = 0; i < numVectors; i++) {
++		vectors[i].interruptLock = IOLockAlloc();
++		if (vectors[i].interruptLock == NULL) {
++			return false;
++		}
++	}
++
++	/* From here on IRQs from group 1 reach handleInterrupt(); nothing is enabled yet. */
++	IOInterruptHandler handler = OSMemberFunctionCast(IOInterruptHandler, this, &BCM2711GIC::handleInterrupt);
++	ml_install_interrupt_handler(this, 0, this, handler, NULL);
++
++	OSSymbol *name = (OSSymbol *)OSSymbol::withCString("bcm2711-gic");
++	setProperty("IOInterruptControllerName", name);
++	registerService();
++	getPlatform()->registerInterruptController(name, this);
++	name->release();
++
++	IOLog("BCM2711 GIC: %u interrupt lines, dist %p, cpu interface %p\n", numVectors, (void *)dist, (void *)cpuif);
++	IOLog("BCM2711 GIC: IRQ self-test (SGI 1) %s\n", selfTest() ? "OK" : "FAILED");
++	return true;
++}
++
++IOReturn
++BCM2711GIC::handleInterrupt(void *refCon __unused, IOService *nub __unused, int source __unused)
++{
++	for (;;) {
++		uint32_t iar = cr(GICC_IAR);
++		uint32_t id = iar & 0x3ff;
++
++		if (id >= GIC_SPURIOUS) {
++			break;
++		}
++		if (id < numVectors) {
++			IOInterruptVector *v = &vectors[id];
++			if (v->interruptRegistered) {
++				v->interruptActive = 1;
++				if (!v->interruptDisabledSoft) {
++					OSMemoryBarrier();
++					v->handler(v->target, v->refCon, v->nub, v->source);
++				} else {
++					v->interruptDisabledHard = 1;
++					disableVectorHard((IOInterruptVectorNumber)id, v);
++				}
++				v->interruptActive = 0;
++			} else {
++				disableVectorHard((IOInterruptVectorNumber)id, v);
++			}
++		}
++		cw(GICC_EOIR, iar);
++	}
++	return kIOReturnSuccess;
++}
++
++void
++BCM2711GIC::initVector(IOInterruptVectorNumber, IOInterruptVector *)
++{
++	/* hwInit() already put every line in group 1, disabled, routed to CPU 0 */
++}
++
++int
++BCM2711GIC::getVectorType(IOInterruptVectorNumber n, IOInterruptVector *)
++{
++	if (n < 16) {
++		return kIOInterruptTypeEdge;
++	}
++	return (dr(GICD_ICFGR(n / 16)) >> (2 * (n % 16) + 1)) & 1 ? kIOInterruptTypeEdge : kIOInterruptTypeLevel;
++}
++
++void
++BCM2711GIC::disableVectorHard(IOInterruptVectorNumber n, IOInterruptVector *)
++{
++	dw(GICD_ICENABLER(n / 32), 1u << (n % 32));
++}
++
++void
++BCM2711GIC::enableVector(IOInterruptVectorNumber n, IOInterruptVector *)
++{
++	dw(GICD_ISENABLER(n / 32), 1u << (n % 32));
++}
++
++void
++BCM2711GIC::causeVector(IOInterruptVectorNumber n, IOInterruptVector *)
++{
++	if (n < 16) {
++		dw(GICD_SGIR, (2u << 24) | (uint32_t)n);
++	} else {
++		dw(GICD_ISPENDR(n / 32), 1u << (n % 32));
++	}
++}
++#endif /* ARM64_BOARD_CONFIG_BCM2837 */
+diff --git a/iokit/KernelConfigTables.cpp b/iokit/KernelConfigTables.cpp
+index 16a31b8..efd9654 100644
+--- a/iokit/KernelConfigTables.cpp
++++ b/iokit/KernelConfigTables.cpp
+@@ -47,6 +47,12 @@ const char * gIOKernelConfigTables =
+     "     'IONameMatch'     = 'arm,cortex-a72';"
+     "     'IOProbeScore'    = 10000:32;"
+     "   },"
++    "   {"
++    "     'IOClass'         = BCM2711GIC;"
++    "     'IOProviderClass' = IOPlatformDevice;"
++    "     'IONameMatch'     = 'arm,gic-400';"
++    "     'IOProbeScore'    = 10000:32;"
++    "   },"
+ #endif
+     "   {"
+     "     'IOClass'         = IOPanicPlatform;"
+diff --git a/iokit/conf/files.arm64 b/iokit/conf/files.arm64
+index a7214b1..3c1092d 100644
+--- a/iokit/conf/files.arm64
++++ b/iokit/conf/files.arm64
+@@ -10,3 +10,5 @@ iokit/Kernel/arm/AppleARMSMP.cpp    					optional iokitcpp
+ iokit/Kernel/arm/BCM2837PlatformExpert.cpp                       optional iokitcpp
+ 
+ iokit/Kernel/arm/BCM2837CPU.cpp                                  optional iokitcpp
++
++iokit/Kernel/arm/BCM2711GIC.cpp                                   optional iokitcpp
