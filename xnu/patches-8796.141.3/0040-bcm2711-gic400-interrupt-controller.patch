@@ -1,6 +1,6 @@
 diff --git a/iokit/Kernel/arm/BCM2711GIC.cpp b/iokit/Kernel/arm/BCM2711GIC.cpp
 new file mode 100644
-index 0000000..22a5b65
+index 0000000..f37cb07
 --- /dev/null
 +++ b/iokit/Kernel/arm/BCM2711GIC.cpp
 @@ -0,0 +1,276 @@
@@ -131,7 +131,7 @@ index 0000000..22a5b65
 +
 +	dw(GICD_CTLR, 3);               /* enable group 0 and group 1 */
 +	cw(GICC_PMR, 0xff);
-+	cw(GICC_CTLR, 1 | 2 | (1u << 3));       /* groups 0 and 1; group 0 is signalled as FIQ */
++	cw(GICC_CTLR, 1 | 2 | (1u << 2) | (1u << 3));   /* groups 0 and 1, IAR acknowledges both (AckCtl), group 0 is signalled as FIQ */
 +}
 +
 +bool
