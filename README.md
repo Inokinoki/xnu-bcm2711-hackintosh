@@ -21,7 +21,14 @@ Fork point: upstream `rootfs-ramdisk` (xnu-8796.141.3, HFS+ RAM disk root, SD ro
 - **Timer interrupts: the loader sets up the GIC-400.** On `raspi4b` the architected timer is a GIC PPI, not a BCM2836
   local-controller interrupt as on the Pi 3, and xnu takes its timer as a FIQ (its IRQ handler pointer is NULL). Without
   the setup the kernel booted but stalled after `boot CPU 0 registered`. `loader/main.c` `gic_init()` puts the timer PPIs
-  in group 0 and enables FIQ signalling. A real GIC driver in the kernel is still to do.
+  in group 0 and enables FIQ signalling.
+- **GIC-400 driver (patch 0040, `BCM2711GIC`)**: an `IOInterruptController` that takes over from the loader: SGIs/SPIs in group 1
+  arrive as IRQs, the driver acknowledges (IAR, `GICC_CTLR.AckCtl` set), dispatches to registered vectors and signals EOI;
+  the timer PPIs stay group 0/FIQ. It is installed as the boot CPU's IRQ handler and registered as `bcm2711-gic`. Matched
+  from a root `gic` ADT node (`tools/pi_adt.py`). Boot prints `BCM2711 GIC: IRQ self-test (SGI 1) OK` (an SGI sent to
+  itself goes through IRQ -> handler -> vector); userspace still runs (CI run 40667795554). Not done: peripheral
+  interrupts in ADT nodes (no driver uses an interrupt yet), secondary CPUs/IPIs, and the real-hardware GIC security
+  state (the code assumes QEMU's single-security-state GICC_CTLR layout).
 - Patch 0039 fixed the earlier `kmem_range_init: vm_map_locate_space failing` panic above ~1 GiB: the macOS compressor
   pool is 16x RAM, which plus the 24 GiB zone map overflowed the 48 GiB kernel map.
 - Boot args now include `wdt=-1`: QEMU is slow enough to trip the interrupts-disabled watchdog otherwise.
