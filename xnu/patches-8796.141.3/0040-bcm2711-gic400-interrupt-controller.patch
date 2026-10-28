@@ -1,9 +1,9 @@
 diff --git a/iokit/Kernel/arm/BCM2711GIC.cpp b/iokit/Kernel/arm/BCM2711GIC.cpp
 new file mode 100644
-index 0000000..1f658d2
+index 0000000..22a5b65
 --- /dev/null
 +++ b/iokit/Kernel/arm/BCM2711GIC.cpp
-@@ -0,0 +1,274 @@
+@@ -0,0 +1,276 @@
 +/*
 + * GIC-400 interrupt controller driver for the Raspberry Pi 4 (BCM2711).
 + *
@@ -27,6 +27,8 @@ index 0000000..1f658d2
 +#include <libkern/c++/OSData.h>
 +#include <libkern/c++/OSSymbol.h>
 +#include <machine/machine_routines.h>
++
++extern "C" vm_offset_t ml_io_map(vm_offset_t phys_addr, vm_size_t size);
 +
 +#define GICD_CTLR       0x000
 +#define GICD_TYPER      0x004
