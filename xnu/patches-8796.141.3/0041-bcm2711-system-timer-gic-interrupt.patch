@@ -1,9 +1,9 @@
 diff --git a/iokit/Kernel/arm/BCM2711SysTimer.cpp b/iokit/Kernel/arm/BCM2711SysTimer.cpp
 new file mode 100644
-index 0000000..5e7ee64
+index 0000000..9ee70f4
 --- /dev/null
 +++ b/iokit/Kernel/arm/BCM2711SysTimer.cpp
-@@ -0,0 +1,117 @@
+@@ -0,0 +1,128 @@
 +/*
 + * BCM2835 system timer (1 MHz free-running counter, four match registers) on the
 + * BCM2711, used as the first consumer of a GIC-400 peripheral interrupt: the
@@ -60,7 +60,7 @@ index 0000000..5e7ee64
 +void
 +BCM2711SysTimer::interrupt(OSObject *, void *, IOService *, int)
 +{
-+	wr(ST_CS, 1u << 1);             /* clear match 1 */
++	wr(ST_CS, 1u << 1);             /* clear match 1 (no effect for a software-pended interrupt) */
 +	if (++hits < ST_TICKS) {
 +		wr(ST_C1, rd(ST_CLO) + ST_PERIOD_US);
 +	}
@@ -114,7 +114,18 @@ index 0000000..5e7ee64
 +	for (int n = 0; n < 100 && hits < ST_TICKS; n++) {
 +		IODelay(10000);
 +	}
-+	IOLog("BCM2711 timer: %u/%u match interrupts through GIC id %d: %s\n", hits, ST_TICKS, vector,
++	uint32_t hw = hits;
++	IOLog("BCM2711 timer: %u/%u match interrupts from the hardware through GIC id %d\n", hw, ST_TICKS, vector);
++	/*
++	 * QEMU 9.0's raspi4b does not wire peripheral interrupts to the GIC; pend the SPI by
++	 * software (GICD_ISPENDR via causeInterrupt) to prove the rest of the path.
++	 */
++	hits = ST_TICKS - 1;
++	provider->causeInterrupt(0);
++	for (int n = 0; n < 100 && hits < ST_TICKS; n++) {
++		IODelay(1000);
++	}
++	IOLog("BCM2711 timer: software-pended SPI %d through nub -> GIC -> IRQ -> handler: %s\n", vector,
 +	    hits == ST_TICKS ? "OK" : "FAILED");
 +	provider->disableInterrupt(0);
 +	registerService();
