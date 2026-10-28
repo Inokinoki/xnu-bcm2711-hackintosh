@@ -1,0 +1,149 @@
+diff --git a/iokit/Kernel/arm/BCM2711SysTimer.cpp b/iokit/Kernel/arm/BCM2711SysTimer.cpp
+new file mode 100644
+index 0000000..5e7ee64
+--- /dev/null
++++ b/iokit/Kernel/arm/BCM2711SysTimer.cpp
+@@ -0,0 +1,117 @@
++/*
++ * BCM2835 system timer (1 MHz free-running counter, four match registers) on the
++ * BCM2711, used as the first consumer of a GIC-400 peripheral interrupt: the
++ * device-tree node carries the timer base and the GIC interrupt id (SPI), this
++ * driver builds the standard IOInterruptControllers/IOInterruptSpecifiers
++ * properties on its nub, registers a handler through IOService::registerInterrupt()
++ * and lets match register 1 fire a few times. Proves the path
++ * device -> GIC SPI -> IRQ -> BCM2711GIC::handleInterrupt -> IOKit vector -> driver.
++ */
++#include <pexpert/arm64/board_config.h>
++
++#if defined(ARM64_BOARD_CONFIG_BCM2837)
++#include <IOKit/IOService.h>
++#include <IOKit/IOLib.h>
++#include <IOKit/IOPlatformExpert.h>
++#include <libkern/c++/OSArray.h>
++#include <libkern/c++/OSData.h>
++#include <libkern/c++/OSSymbol.h>
++#include <machine/machine_routines.h>
++
++extern "C" vm_offset_t ml_io_map(vm_offset_t phys_addr, vm_size_t size);
++
++#define ST_CS   0x00
++#define ST_CLO  0x04
++#define ST_C1   0x10
++
++#define ST_TICKS        5
++#define ST_PERIOD_US    10000
++
++class BCM2711SysTimer : public IOService {
++	OSDeclareDefaultStructors(BCM2711SysTimer);
++
++	volatile uint8_t *regs = NULL;
++	volatile uint32_t hits = 0;
++
++	uint32_t
++	rd(uint32_t off)
++	{
++		return *(volatile uint32_t *)(regs + off);
++	}
++	void
++	wr(uint32_t off, uint32_t v)
++	{
++		*(volatile uint32_t *)(regs + off) = v;
++	}
++
++public:
++	void interrupt(OSObject *target, void *refCon, IOService *nub, int source);
++	bool start(IOService *provider) APPLE_KEXT_OVERRIDE;
++};
++
++OSDefineMetaClassAndStructors(BCM2711SysTimer, IOService);
++
++void
++BCM2711SysTimer::interrupt(OSObject *, void *, IOService *, int)
++{
++	wr(ST_CS, 1u << 1);             /* clear match 1 */
++	if (++hits < ST_TICKS) {
++		wr(ST_C1, rd(ST_CLO) + ST_PERIOD_US);
++	}
++}
++
++bool
++BCM2711SysTimer::start(IOService *provider)
++{
++	OSData *b = OSDynamicCast(OSData, provider->getProperty("sys-timer-base"));
++	OSData *i = OSDynamicCast(OSData, provider->getProperty("sys-timer-irq"));
++
++	if (b == NULL || i == NULL || b->getLength() != 8 || i->getLength() != 4) {
++		return false;
++	}
++	if (!IOService::start(provider)) {
++		return false;
++	}
++	regs = (volatile uint8_t *)ml_io_map((vm_offset_t) * (const uint64_t *)b->getBytesNoCopy(), 0x20);
++	if (regs == NULL) {
++		return false;
++	}
++
++	/* What a device-tree "interrupts" entry would give the nub: controller name + vector number. */
++	int32_t vector = *(const int32_t *)i->getBytesNoCopy();
++	OSArray *controllers = OSArray::withCapacity(1);
++	OSArray *specifiers = OSArray::withCapacity(1);
++	const OSSymbol *name = OSSymbol::withCString("bcm2711-gic");
++	OSData *spec = OSData::withBytes(&vector, sizeof(vector));
++	if (controllers == NULL || specifiers == NULL || name == NULL || spec == NULL) {
++		return false;
++	}
++	controllers->setObject(name);
++	specifiers->setObject(spec);
++	provider->setProperty(gIOInterruptControllersKey, controllers);
++	provider->setProperty(gIOInterruptSpecifiersKey, specifiers);
++	controllers->release();
++	specifiers->release();
++	name->release();
++	spec->release();
++
++	IOReturn r = provider->registerInterrupt(0, this,
++	    OSMemberFunctionCast(IOInterruptAction, this, &BCM2711SysTimer::interrupt), NULL);
++	if (r != kIOReturnSuccess) {
++		IOLog("BCM2711 timer: registerInterrupt(GIC %d) failed: 0x%x\n", vector, r);
++		return false;
++	}
++	provider->enableInterrupt(0);
++
++	wr(ST_CS, 1u << 1);
++	wr(ST_C1, rd(ST_CLO) + ST_PERIOD_US);
++	for (int n = 0; n < 100 && hits < ST_TICKS; n++) {
++		IODelay(10000);
++	}
++	IOLog("BCM2711 timer: %u/%u match interrupts through GIC id %d: %s\n", hits, ST_TICKS, vector,
++	    hits == ST_TICKS ? "OK" : "FAILED");
++	provider->disableInterrupt(0);
++	registerService();
++	return true;
++}
++#endif /* ARM64_BOARD_CONFIG_BCM2837 */
+diff --git a/iokit/KernelConfigTables.cpp b/iokit/KernelConfigTables.cpp
+index efd9654..ce44d64 100644
+--- a/iokit/KernelConfigTables.cpp
++++ b/iokit/KernelConfigTables.cpp
+@@ -53,6 +53,12 @@ const char * gIOKernelConfigTables =
+     "     'IONameMatch'     = 'arm,gic-400';"
+     "     'IOProbeScore'    = 10000:32;"
+     "   },"
++    "   {"
++    "     'IOClass'         = BCM2711SysTimer;"
++    "     'IOProviderClass' = IOPlatformDevice;"
++    "     'IONameMatch'     = 'brcm,bcm2835-system-timer';"
++    "     'IOProbeScore'    = 10000:32;"
++    "   },"
+ #endif
+     "   {"
+     "     'IOClass'         = IOPanicPlatform;"
+diff --git a/iokit/conf/files.arm64 b/iokit/conf/files.arm64
+index 3c1092d..0c8742a 100644
+--- a/iokit/conf/files.arm64
++++ b/iokit/conf/files.arm64
+@@ -12,3 +12,4 @@ iokit/Kernel/arm/BCM2837PlatformExpert.cpp                       optional iokitc
+ iokit/Kernel/arm/BCM2837CPU.cpp                                  optional iokitcpp
+ 
+ iokit/Kernel/arm/BCM2711GIC.cpp                                   optional iokitcpp
++iokit/Kernel/arm/BCM2711SysTimer.cpp                              optional iokitcpp
