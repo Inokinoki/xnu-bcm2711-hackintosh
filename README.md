@@ -26,9 +26,17 @@ Fork point: upstream `rootfs-ramdisk` (xnu-8796.141.3, HFS+ RAM disk root, SD ro
   arrive as IRQs, the driver acknowledges (IAR, `GICC_CTLR.AckCtl` set), dispatches to registered vectors and signals EOI;
   the timer PPIs stay group 0/FIQ. It is installed as the boot CPU's IRQ handler and registered as `bcm2711-gic`. Matched
   from a root `gic` ADT node (`tools/pi_adt.py`). Boot prints `BCM2711 GIC: IRQ self-test (SGI 1) OK` (an SGI sent to
-  itself goes through IRQ -> handler -> vector); userspace still runs (CI run 40667795554). Not done: peripheral
-  interrupts in ADT nodes (no driver uses an interrupt yet), secondary CPUs/IPIs, and the real-hardware GIC security
+  itself goes through IRQ -> handler -> vector); userspace still runs (CI run 40667795554). Not done: secondary CPUs/IPIs, and the real-hardware GIC security
   state (the code assumes QEMU's single-security-state GICC_CTLR layout).
+- **First peripheral interrupt consumer (patch 0041, `BCM2711SysTimer`)**: a root `timer` ADT node (`sys-timer-base`,
+  `sys-timer-irq` = GIC id 97 = 96 + VideoCore IRQ 1) gets `IOInterruptControllers`/`IOInterruptSpecifiers` naming `bcm2711-gic`;
+  the driver calls `registerInterrupt`/`enableInterrupt` on its nub and programs match register 1. **QEMU 9.0.90's `raspi4b`
+  does not deliver peripheral interrupts to the GIC** (probed: the system timer counts and sets its match flag, the PL011
+  has TXIM set, the legacy `bcm2835-ic` is enabled, and no GIC line goes pending), so the log shows `0/5 match interrupts from
+  the hardware`. The driver then pends the SPI by software (`causeInterrupt` -> `GICD_ISPENDR`) and the log shows
+  `software-pended SPI 97 through nub -> GIC -> IRQ -> handler: OK` (CI run 40676922758): nub properties -> IOKit vector ->
+  SPI group 1 -> IRQ -> `handleInterrupt` -> driver. Real hardware (or a newer QEMU) should show 5/5 from the hardware;
+  the GIC id is the ADT property `sys-timer-irq`, so it can be changed without a kernel rebuild.
 - Patch 0039 fixed the earlier `kmem_range_init: vm_map_locate_space failing` panic above ~1 GiB: the macOS compressor
   pool is 16x RAM, which plus the 24 GiB zone map overflowed the 48 GiB kernel map.
 - Boot args now include `wdt=-1`: QEMU is slow enough to trip the interrupts-disabled watchdog otherwise.
