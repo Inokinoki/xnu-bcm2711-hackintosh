@@ -14,6 +14,7 @@ import struct
 BCM283X_PERIPH_BASE = 0xFE000000
 BCM283X_PERIPH_SIZE = 0x01800000
 TIMEBASE_HZ = 54000000
+SYSTIMER_GIC_ID = 97
 
 
 class Node:
@@ -88,6 +89,14 @@ def build(dram_base, dram_size, cmdline='', ramdisk=None):
     gic.prop('compatible', 'arm,gic-400')
     gic.prop('gic-dist-base', 0xFF841000)
     gic.prop('gic-cpu-base', 0xFF842000)
+
+    # BCM2835 system timer: first consumer of a GIC interrupt (BCM2711SysTimer).
+    # GIC id = 96 + VideoCore IRQ 1 (match register 1), as in bcm2711.dtsi (GIC_SPI 0x41).
+    timer = root.child('timer')
+    timer.prop('name', 'timer')
+    timer.prop('compatible', 'brcm,bcm2835-system-timer')
+    timer.prop('sys-timer-base', 0xFE003000)
+    timer.prop('sys-timer-irq', struct.pack('<I', SYSTIMER_GIC_ID))
 
     # pe_identify_machine(): a running CPU supplies the timebase frequency.
     cpus = root.child('cpus')
