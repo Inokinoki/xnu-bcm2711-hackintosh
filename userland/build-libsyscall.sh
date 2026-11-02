@@ -24,7 +24,7 @@ cd "$DXB/xnu/libsyscall"
 env LD="$(xcrun -find clang)" LDPLUSPLUS="$(xcrun -find clang++)" \
 	xcodebuild install -sdk macosx -target Libsyscall_dynamic \
 	ARCHS=arm64 VALID_ARCHS=arm64 ONLY_ACTIVE_ARCH=NO \
-	MACOSX_DEPLOYMENT_TARGET=13.0 CODE_SIGN_IDENTITY=- \
+	MACOSX_DEPLOYMENT_TARGET=13.0 CODE_SIGN_IDENTITY=- GCC_TREAT_WARNINGS_AS_ERRORS=NO \
 	OTHER_CFLAGS='$(inherited) -mcpu=cortex-a72' \
 	OTHER_MIGFLAGS="-novouchers -I$SYSPRIV -I$FAKEROOT_DIR/usr/local/include -I$FAKEROOT_DIR/usr/include -I$KERNHDR -DKOBJECT_SERVER" \
 	SYSTEM_HEADER_SEARCH_PATHS="$SYSPRIV $FAKEROOT_DIR/usr/local/include $FAKEROOT_DIR/usr/include $KERNHDR" \
