@@ -49,6 +49,9 @@ jobs:
       - name: xnu headers, Libsystem headers, mig
         run: userland/dxb-headers.sh build/userland/dxb
 
+      - name: Libc and libmalloc headers
+        run: userland/install-headers.sh build/userland/dxb build/userland/src Libc:Libc libmalloc:libmalloc
+
       - name: libsystem_kernel
         run: userland/build-libsyscall.sh build/userland/dxb build/userland/root
 
