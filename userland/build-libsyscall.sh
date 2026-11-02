@@ -13,6 +13,9 @@ mkdir -p "$OUTROOT"
 OUTROOT=$(cd "$OUTROOT" && pwd)
 FAKEROOT_DIR=$DXB/fakeroot
 BUILD=$DXB/build
+# the System.framework/PrivateHeaders symlink is not created in the fakeroot: use the version directory
+SYSPRIV=$FAKEROOT_DIR/System/Library/Frameworks/System.framework/Versions/B/PrivateHeaders
+KERNHDR=$FAKEROOT_DIR/System/Library/Frameworks/Kernel.framework/Versions/A/Headers
 
 echo "== where xnu installed the mach .defs"
 find "$FAKEROOT_DIR" -name "restartable*" -o -name "mach_port.defs" | sort
@@ -23,7 +26,8 @@ env LD="$(xcrun -find clang)" LDPLUSPLUS="$(xcrun -find clang++)" \
 	ARCHS=arm64 VALID_ARCHS=arm64 ONLY_ACTIVE_ARCH=NO \
 	MACOSX_DEPLOYMENT_TARGET=13.0 CODE_SIGN_IDENTITY=- \
 	OTHER_CFLAGS='$(inherited) -mcpu=cortex-a72' \
-	OTHER_MIGFLAGS="-novouchers -I$FAKEROOT_DIR/System/Library/Frameworks/System.framework/PrivateHeaders -I$FAKEROOT_DIR/usr/local/include -I$FAKEROOT_DIR/usr/include -DKOBJECT_SERVER" \
+	OTHER_MIGFLAGS="-novouchers -I$SYSPRIV -I$FAKEROOT_DIR/usr/local/include -I$FAKEROOT_DIR/usr/include -I$KERNHDR -DKOBJECT_SERVER" \
+	SYSTEM_HEADER_SEARCH_PATHS="$SYSPRIV $FAKEROOT_DIR/usr/local/include $FAKEROOT_DIR/usr/include $KERNHDR" \
 	HEADER_SEARCH_PATHS='$(inherited) '"$FAKEROOT_DIR/usr/include $FAKEROOT_DIR/usr/local/include" \
 	OBJROOT="$BUILD/libsyscall-arm64.obj" SYMROOT="$BUILD/libsyscall-arm64.sym" \
 	DSTROOT="$OUTROOT" FAKEROOT_DIR="$FAKEROOT_DIR" \
