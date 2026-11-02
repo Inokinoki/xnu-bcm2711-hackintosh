@@ -47,7 +47,7 @@ check() {
 [ $# -gt 0 ] || { echo "usage: $0 FILE|DIR..." >&2; exit 2; }
 for p in "$@"; do
 	if [ -d "$p" ]; then
-		for f in $(find "$p" -type f); do check "$f"; done
+		for f in $(find "$p" -type f -not -path '*.dSYM/*'); do check "$f"; done
 	else
 		check "$p"
 	fi

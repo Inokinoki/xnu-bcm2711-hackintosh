@@ -16,6 +16,7 @@ mkdir -p "$OUT/root/usr/bin" "$OUT/negative"
 
 # shellcheck disable=SC2086
 $CC $USERLAND_CFLAGS $USERLAND_LDFLAGS "$HERE/src/smoke.c" -o "$OUT/root/usr/bin/smoke"
+rm -rf "$OUT/root/usr/bin/smoke.dSYM"
 "$GATE" "$OUT/root/usr/bin/smoke"
 
 # shellcheck disable=SC2086
