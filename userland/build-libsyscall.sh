@@ -28,7 +28,7 @@ env LD="$(xcrun -find clang)" LDPLUSPLUS="$(xcrun -find clang++)" \
 	OTHER_CFLAGS='$(inherited) -mcpu=cortex-a72' \
 	OTHER_MIGFLAGS="-novouchers -I$SYSPRIV -I$FAKEROOT_DIR/usr/local/include -I$FAKEROOT_DIR/usr/include -I$KERNHDR -DKOBJECT_SERVER" \
 	SYSTEM_HEADER_SEARCH_PATHS="$SYSPRIV $FAKEROOT_DIR/usr/local/include $FAKEROOT_DIR/usr/include $KERNHDR" \
-	HEADER_SEARCH_PATHS='$(inherited) '"$FAKEROOT_DIR/usr/include $FAKEROOT_DIR/usr/local/include" \
+	HEADER_SEARCH_PATHS='$(inherited) '"$SYSPRIV $FAKEROOT_DIR/usr/local/include $FAKEROOT_DIR/usr/include" \
 	OBJROOT="$BUILD/libsyscall-arm64.obj" SYMROOT="$BUILD/libsyscall-arm64.sym" \
 	DSTROOT="$OUTROOT" FAKEROOT_DIR="$FAKEROOT_DIR" \
 	RC_ProjectSourceVersion=1 RC_ProjectNameAndSourceVersion=Libsyscall-1
