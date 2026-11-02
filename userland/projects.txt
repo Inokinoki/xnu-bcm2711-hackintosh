@@ -1,0 +1,41 @@
+# Apple projects fetched by fetch-sources.py (names as in the macos-135 release manifest).
+# Order follows docs/userland-plan.md section 2.
+xnu                 # libsyscall
+libplatform
+libpthread
+libclosure
+Libc
+libmalloc
+dyld                # also libdyld and libunwind
+keymgr
+libdispatch
+Libinfo
+Libnotify
+copyfile
+removefile
+mDNSResponder
+Libsystem
+zlib
+ncurses
+libedit
+libiconv
+libresolv
+libutil
+libxml2
+libffi
+bash
+file_cmds
+text_cmds
+basic_cmds
+shell_cmds
+adv_cmds
+system_cmds
+diskdev_cmds
+hfs
+network_cmds
+top
+less
+vim
+awk
+patch_cmds
+bootstrap_cmds
