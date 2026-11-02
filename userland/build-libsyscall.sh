@@ -20,6 +20,7 @@ env LD="$(xcrun -find clang)" LDPLUSPLUS="$(xcrun -find clang++)" \
 	ARCHS=arm64 VALID_ARCHS=arm64 ONLY_ACTIVE_ARCH=NO \
 	MACOSX_DEPLOYMENT_TARGET=13.0 CODE_SIGN_IDENTITY=- \
 	OTHER_CFLAGS='$(inherited) -mcpu=cortex-a72' \
+	OTHER_MIGFLAGS="-novouchers -I$FAKEROOT_DIR/System/Library/Frameworks/System.framework/PrivateHeaders -I$FAKEROOT_DIR/usr/local/include -I$FAKEROOT_DIR/usr/include -DKOBJECT_SERVER" \
 	HEADER_SEARCH_PATHS='$(inherited) '"$FAKEROOT_DIR/usr/include $FAKEROOT_DIR/usr/local/include" \
 	OBJROOT="$BUILD/libsyscall-arm64.obj" SYMROOT="$BUILD/libsyscall-arm64.sym" \
 	DSTROOT="$OUTROOT" FAKEROOT_DIR="$FAKEROOT_DIR" \
