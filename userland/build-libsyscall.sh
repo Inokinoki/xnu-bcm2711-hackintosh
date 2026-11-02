@@ -14,6 +14,9 @@ OUTROOT=$(cd "$OUTROOT" && pwd)
 FAKEROOT_DIR=$DXB/fakeroot
 BUILD=$DXB/build
 
+echo "== where xnu installed the mach .defs"
+find "$FAKEROOT_DIR" -name "restartable*" -o -name "mach_port.defs" | sort
+
 cd "$DXB/xnu/libsyscall"
 env LD="$(xcrun -find clang)" LDPLUSPLUS="$(xcrun -find clang++)" \
 	xcodebuild install -sdk macosx -target Libsyscall_dynamic \
