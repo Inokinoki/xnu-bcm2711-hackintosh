@@ -17,6 +17,8 @@ for pt in "$@"; do
 	target=${pt#*:}
 	echo "== installhdrs $proj ($target)"
 	cd "$SRC/$proj"
+	# Xcode does not ship Makefiles/CoreOS/Xcode/BSD.xcconfig; installhdrs does not need its settings
+	grep -rl 'BSD.xcconfig' . --include='*.xcconfig' | while read -r f; do sed -i '' '/BSD.xcconfig/d' "$f"; done
 	env LD="$(xcrun -find clang)" LDPLUSPLUS="$(xcrun -find clang++)" \
 		xcodebuild installhdrs -sdk macosx -target "$target" \
 		ARCHS=arm64 VALID_ARCHS=arm64 ONLY_ACTIVE_ARCH=NO CODE_SIGN_IDENTITY=- \
