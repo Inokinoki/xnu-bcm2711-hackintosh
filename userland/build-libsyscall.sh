@@ -20,12 +20,18 @@ KERNHDR=$FAKEROOT_DIR/System/Library/Frameworks/Kernel.framework/Versions/A/Head
 echo "== where xnu installed the mach .defs"
 find "$FAKEROOT_DIR" -name "restartable*" -o -name "mach_port.defs" | sort
 
+echo "== stdatomic.h candidates and what <os/atomic.h> pulls in"
+find "$FAKEROOT_DIR" -name "stdatomic.h"
+echo '#include <os/atomic.h>
+memory_order mo;' | xcrun clang -E -H -x c -target arm64-apple-macos13.0 -isysroot "$(xcrun --sdk macosx --show-sdk-path)" \
+	-I"$SYSPRIV" -I"$FAKEROOT_DIR/usr/local/include" -I"$FAKEROOT_DIR/usr/include" - 2>&1 | grep -E "atomic|error" | head -10 || true
+
 cd "$DXB/xnu/libsyscall"
 env LD="$(xcrun -find clang)" LDPLUSPLUS="$(xcrun -find clang++)" \
 	xcodebuild install -sdk macosx -target Libsyscall_dynamic \
 	ARCHS=arm64 VALID_ARCHS=arm64 ONLY_ACTIVE_ARCH=NO \
 	MACOSX_DEPLOYMENT_TARGET=13.0 CODE_SIGN_IDENTITY=- GCC_TREAT_WARNINGS_AS_ERRORS=NO \
-	OTHER_CFLAGS='$(inherited) -mcpu=cortex-a72' \
+	OTHER_CFLAGS='$(inherited) -mcpu=cortex-a72 "-D__API_AVAILABLE_PLATFORM_bridgeos(x)=bridgeos,introduced=x"' \
 	OTHER_MIGFLAGS="-novouchers -I$SYSPRIV -I$FAKEROOT_DIR/usr/local/include -I$FAKEROOT_DIR/usr/include -I$KERNHDR -DKOBJECT_SERVER" \
 	SYSTEM_HEADER_SEARCH_PATHS="$SYSPRIV $FAKEROOT_DIR/usr/local/include $FAKEROOT_DIR/usr/include $KERNHDR" \
 	HEADER_SEARCH_PATHS='$(inherited) '"$SYSPRIV $FAKEROOT_DIR/usr/local/include $FAKEROOT_DIR/usr/include" \
