@@ -33,7 +33,7 @@ env LD="$(xcrun -find clang)" LDPLUSPLUS="$(xcrun -find clang++)" \
 	MACOSX_DEPLOYMENT_TARGET=13.0 CODE_SIGN_IDENTITY=- GCC_TREAT_WARNINGS_AS_ERRORS=NO \
 	OTHER_CFLAGS='$(inherited) -mcpu=cortex-a72 "-D__API_AVAILABLE_PLATFORM_bridgeos(x)=bridgeos,introduced=x"' \
 	OTHER_MIGFLAGS="-novouchers -I$SYSPRIV -I$FAKEROOT_DIR/usr/local/include -I$FAKEROOT_DIR/usr/include -I$KERNHDR -DKOBJECT_SERVER" \
-	SYSTEM_HEADER_SEARCH_PATHS="$SYSPRIV $FAKEROOT_DIR/usr/local/include $FAKEROOT_DIR/usr/include $KERNHDR" \
+	SYSTEM_HEADER_SEARCH_PATHS="$SYSPRIV $FAKEROOT_DIR/usr/local/include $FAKEROOT_DIR/usr/include" \
 	HEADER_SEARCH_PATHS='$(inherited) '"$SYSPRIV $FAKEROOT_DIR/usr/local/include $FAKEROOT_DIR/usr/include" \
 	OBJROOT="$BUILD/libsyscall-arm64.obj" SYMROOT="$BUILD/libsyscall-arm64.sym" \
 	DSTROOT="$OUTROOT" FAKEROOT_DIR="$FAKEROOT_DIR" \
