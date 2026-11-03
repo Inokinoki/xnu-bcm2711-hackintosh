@@ -30,3 +30,4 @@ int mbr_set_identifier_ttl(int id_type, const void *identifier, size_t identifie
 int mbr_identifier_translate(int id_type, const void *identifier, size_t identifier_size, int target_type, void **result, int *rec_type) { (void)id_type; (void)identifier; (void)identifier_size; (void)target_type; (void)result; (void)rec_type; return ENOENT; }
 int mbr_check_membership_ext(int userid_type, const void *userid, size_t userid_size, int groupid_type, const void *groupid, int refresh, int *isMember) { (void)userid_type; (void)userid; (void)userid_size; (void)groupid_type; (void)groupid; (void)refresh; if (isMember) *isMember = 0; return ENOENT; }
 int mbr_close_connections(void) { return 0; }
+int mbr_identifier_to_uuid(int id_type, const void *identifier, size_t identifier_size, uuid_t uu) { (void)id_type; (void)identifier; (void)identifier_size; (void)uu; return ENOENT; }
