@@ -155,6 +155,21 @@ jobs:
         run: |
           userland/build-libdispatch.sh build/userland/dxb build/userland/src build/userland/root
 
+      - name: libsystem_m (openlibm)
+        id: libm
+        continue-on-error: true
+        run: userland/build-libm.sh build/userland/libm build/userland/root
+
+      - name: libsystem_info
+        id: info
+        continue-on-error: true
+        run: userland/build-xcode-lib.sh build/userland/dxb build/userland/src build/userland/root Libinfo Libinfo
+
+      - name: libsystem_notify
+        id: notify
+        continue-on-error: true
+        run: userland/build-xcode-lib.sh build/userland/dxb build/userland/src build/userland/root Libnotify libnotify
+
       - name: libc++, libc++abi, libunwind (LLVM runtimes)
         id: llvm_runtimes
         continue-on-error: true
