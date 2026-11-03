@@ -31,3 +31,44 @@ os_log_send_and_compose(uint32_t flags, const char **fmt_out, char *buf, size_t 
 	}
 	return buf;
 }
+
+/* public os_log: everything is dropped; os_log_type_enabled says no so callers skip building messages */
+os_log_t
+os_log_create(const char *subsystem, const char *category)
+{
+	(void)subsystem;
+	(void)category;
+	return &_os_log_default;
+}
+
+bool
+os_log_type_enabled(os_log_t oslog, os_log_type_t type)
+{
+	(void)oslog;
+	(void)type;
+	return false;
+}
+
+void
+_os_log_impl(void *dso, os_log_t log, os_log_type_t type, const char *format, uint8_t *buf, uint32_t size)
+{
+	(void)dso; (void)log; (void)type; (void)format; (void)buf; (void)size;
+}
+
+void
+_os_log_debug_impl(void *dso, os_log_t log, os_log_type_t type, const char *format, uint8_t *buf, uint32_t size)
+{
+	(void)dso; (void)log; (void)type; (void)format; (void)buf; (void)size;
+}
+
+void
+_os_log_error_impl(void *dso, os_log_t log, os_log_type_t type, const char *format, uint8_t *buf, uint32_t size)
+{
+	(void)dso; (void)log; (void)type; (void)format; (void)buf; (void)size;
+}
+
+void
+_os_log_fault_impl(void *dso, os_log_t log, os_log_type_t type, const char *format, uint8_t *buf, uint32_t size)
+{
+	(void)dso; (void)log; (void)type; (void)format; (void)buf; (void)size;
+}

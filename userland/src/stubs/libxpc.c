@@ -31,6 +31,7 @@ xpc_object_t xpc_copy_entitlement_for_token(const char *key, void *token) { (voi
 xpc_object_t xpc_dictionary_create(const char *const *keys, const xpc_object_t *values, size_t count) { (void)keys; (void)values; (void)count; return NULL; }
 void xpc_dictionary_set_string(xpc_object_t xdict, const char *key, const char *string) { (void)xdict; (void)key; (void)string; }
 void xpc_dictionary_set_uint64(xpc_object_t xdict, const char *key, uint64_t value) { (void)xdict; (void)key; (void)value; }
+xpc_object_t xpc_create_from_plist(const void *data, size_t size) { (void)data; (void)size; return NULL; }
 void xpc_release(xpc_object_t object) { (void)object; }
 
 struct _xpc_bool_s { int unused; } _xpc_bool_true, _xpc_bool_false;
