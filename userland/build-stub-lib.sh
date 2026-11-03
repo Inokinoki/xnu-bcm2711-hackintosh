@@ -14,6 +14,6 @@ SDK=${SDK:-$(xcrun --sdk macosx --show-sdk-path)}
 mkdir -p "$OUTROOT/$DIR"
 xcrun clang -target arm64-apple-macos13.0 -mcpu=cortex-a72 -Os -g -isysroot "$SDK" -I"$HERE/include" \
 	-Wno-error -dynamiclib -nostdlib -Wl,-undefined,dynamic_lookup \
-	-install_name "/$DIR/$NAME.dylib" -umbrella System \
+	-install_name "/$DIR/$NAME.dylib" -umbrella System -L"$OUTROOT/usr/lib/system" -lsystem_kernel \
 	-compatibility_version 1 -current_version 1 \
 	"$HERE/src/stubs/$NAME.c" -o "$OUTROOT/$DIR/$NAME.dylib"
