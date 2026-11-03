@@ -160,10 +160,20 @@ jobs:
         continue-on-error: true
         run: userland/build-libm.sh build/userland/libm build/userland/root
 
+      - name: libxpc stand-in and Libc collections headers
+        id: xpc
+        continue-on-error: true
+        run: |
+          mkdir -p build/userland/dxb/fakeroot/usr/local/include/os
+          cp build/userland/src/Libc/collections/PublicHeader/*.h build/userland/dxb/fakeroot/usr/local/include/os/
+          userland/build-stub-lib.sh build/userland/root libxpc
+
       - name: libsystem_info
         id: info
         continue-on-error: true
-        run: userland/build-xcode-lib.sh build/userland/dxb build/userland/src build/userland/root Libinfo Libinfo
+        run: |
+          LIB_EXTRA_CFLAGS="$(for d in build/userland/src/Libinfo/*.subproj; do printf -- '-I%s ' "$PWD/$d"; done)" \
+            userland/build-xcode-lib.sh build/userland/dxb build/userland/src build/userland/root Libinfo Libinfo
 
       - name: libsystem_notify
         id: notify

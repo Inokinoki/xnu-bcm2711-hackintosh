@@ -28,3 +28,8 @@ xcrun clang -target arm64-apple-macos13.0 -mcpu=cortex-a72 -isysroot "$SDK" -dyn
 	-L"$OUT/usr/lib/system" -L"$SDK/usr/lib/system" \
 	-lsystem_kernel -lsystem_c -lsystem_pthread -lsystem_malloc -lsystem_platform -lsystem_blocks -lcompiler_rt -ldyld \
 	-Wl,-all_load "$A" "$DXB/build/libdispatch_stubs.o" "$(xcrun clang -print-resource-dir)/lib/darwin/libclang_rt.osx.a" -o "$OUT/usr/lib/system/libdispatch.dylib"
+
+# private headers the other libraries include (<dispatch/private.h>, <os/voucher_private.h> ...)
+mkdir -p "$DXB/fakeroot/usr/local/include/dispatch" "$DXB/fakeroot/usr/local/include/os"
+cp "$SRC/libdispatch/private/"*.h "$DXB/fakeroot/usr/local/include/dispatch/"
+cp "$SRC/libdispatch/os/"*_private.h "$DXB/fakeroot/usr/local/include/os/"
