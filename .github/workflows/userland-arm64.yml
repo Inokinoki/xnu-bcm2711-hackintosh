@@ -119,6 +119,19 @@ jobs:
           userland/patch-libc.sh build/userland/src/Libc
           userland/build-xcode-lib.sh build/userland/dxb build/userland/src build/userland/root Libc libsystem_c.dylib CR_LDFLAGS=
 
+      - name: Diagnose Libc duplicate NOCANCEL symbols
+        if: always()
+        continue-on-error: true
+        run: |
+          O=build/userland/dxb/build/Libc-libsystem_c.dylib.obj/Libc.build/Release
+          for t in FreeBSD Variant_Cancelable; do
+            echo "=== $t creat.o"; xcrun nm "$O/$t.build/Objects-normal/arm64/creat.o" | grep -i creat || true
+            echo "--- flags"; cat "$O/$t.build/Objects-normal/arm64/"*-common-args.resp 2>/dev/null | tr ' ' '\n' | grep -E "^-D|^-U" | grep -E "CANCEL|VARIANT|ALIAS" | sort -u | head -30
+          done
+          ls "$O"/Variant_Cancelable.build/Objects-normal/arm64/*.resp 2>/dev/null | head -3
+          grep -rn "NOCANCEL" build/userland/src/Libc/include/sys/cdefs.h | head -5
+          grep -rn "creat" build/userland/dxb/fakeroot/usr/include/fcntl.h | head -5
+
       - name: libsystem_malloc
         id: malloc
         continue-on-error: true
