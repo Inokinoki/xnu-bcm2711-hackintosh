@@ -1,5 +1,7 @@
 /*
- * libcorecrypto is closed. Libraries of the C runtime list it among their dependencies, so the file has to exist for dyld
- * to load them, but nothing is imported from it yet (tools/macho_undef.py checks this): an empty dylib.
+ * libcorecrypto is closed. The C runtime lists it as a dependency (so the file must exist) and libSystem's fork
+ * handlers call the cc_atfork hooks; there is no corecrypto state to protect across fork.
  */
-int _libcorecrypto_stand_in;
+void cc_atfork_prepare(void) { }
+void cc_atfork_parent(void) { }
+void cc_atfork_child(void) { }
