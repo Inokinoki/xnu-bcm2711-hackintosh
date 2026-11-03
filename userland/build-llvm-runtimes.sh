@@ -17,6 +17,12 @@ if [ ! -d "$WORK/llvm-project/.git" ]; then
 	git clone -q --depth 1 --branch "$TAG" --filter=blob:none --sparse https://github.com/llvm/llvm-project "$WORK/llvm-project"
 	git -C "$WORK/llvm-project" sparse-checkout set runtimes libcxx libcxxabi libunwind cmake llvm/cmake llvm/utils third-party
 fi
+# libunwind authenticates return addresses with autia1716/autib1716 (hint space, a NOP before v8.3) when the
+# frame is marked signed. Nothing in this userland signs, and the gate bans the instructions: drop them
+sed -i.bak -e 's|asm("hint 0xe" : "+r"(x17) : "r"(x16)); // autib1716|(void)x16; // no PAC here|' \
+	-e 's|asm("hint 0xc" : "+r"(x17) : "r"(x16)); // autia1716|(void)x16; // no PAC here|' \
+	"$WORK/llvm-project/libunwind/src/DwarfInstructions.hpp"
+grep -c "no PAC here" "$WORK/llvm-project/libunwind/src/DwarfInstructions.hpp"
 git -C "$WORK/llvm-project" log -1 --format="llvm-project %H"
 
 # the builtins (__divti3 ...) are hidden in libcompiler_rt.dylib: link them in statically
