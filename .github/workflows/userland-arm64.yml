@@ -146,6 +146,14 @@ jobs:
               DYLD_EXTRA_INC="-idirafter $PWD/build/userland/dxb/fakeroot/usr/local/include -idirafter $PWD/userland/include -idirafter $PWD/userland/include-dyld"
           done
 
+      - name: libdispatch
+        id: dispatch
+        continue-on-error: true
+        env:
+          LIB_EXTRA_CFLAGS: -DOS_VARIANT_RESOLVED=1 -DOS_VARIANT_NOTRESOLVED=1
+        run: |
+          userland/build-xcode-lib.sh build/userland/dxb build/userland/src build/userland/root libdispatch libdispatch
+
       - name: Gate on the whole root
         if: always()
         run: tools/check-arm64-plain.sh build/userland/root
