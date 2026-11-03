@@ -38,7 +38,7 @@ env LD="$(xcrun -find clang)" LDPLUSPLUS="$(xcrun -find clang++)" \
 	xcodebuild install -sdk macosx -target "$TARGET" \
 	ARCHS=arm64 VALID_ARCHS=arm64 ONLY_ACTIVE_ARCH=NO \
 	MACOSX_DEPLOYMENT_TARGET=13.0 CODE_SIGN_IDENTITY=- GCC_TREAT_WARNINGS_AS_ERRORS=NO \
-	LIBRARY_SEARCH_PATHS="$OUTROOT/usr/lib/system \$(inherited)" \
+	LIBRARY_SEARCH_PATHS="$OUTROOT/usr/lib/system $OUTROOT/usr/lib \$(inherited)" \
 	OTHER_LDFLAGS="\$(inherited) $EXTRA_LD ${LIB_EXTRA_LDFLAGS:-}" \
 	SUPPORTS_TEXT_BASED_API=NO BUILD_VARIANTS=normal \
 	${LIB_CFLAGS_VAR:-OTHER_CFLAGS}="\$(inherited) $CPU_FLAGS $COMPAT_FLAGS ${LIB_EXTRA_CFLAGS:-} \"$BRIDGEOS_DEF\" $BRIDGEOS_UNAVAIL" \

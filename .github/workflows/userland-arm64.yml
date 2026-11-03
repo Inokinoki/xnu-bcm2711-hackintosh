@@ -199,6 +199,31 @@ jobs:
         continue-on-error: true
         run: userland/build-libsystem.sh build/userland/root
 
+      - name: init (/sbin/launchd)
+        id: init
+        continue-on-error: true
+        run: userland/build-init.sh build/userland/root
+
+      - name: bash
+        id: bash
+        continue-on-error: true
+        run: userland/build-xcode-lib.sh build/userland/dxb build/userland/src build/userland/root bash all
+
+      - name: shell_cmds
+        id: shell_cmds
+        continue-on-error: true
+        run: userland/build-commands.sh build/userland/dxb build/userland/src build/userland/root shell_cmds echo test sleep env kill pwd true false uname hostname id date printenv basename dirname which
+
+      - name: file_cmds
+        id: file_cmds
+        continue-on-error: true
+        run: userland/build-commands.sh build/userland/dxb build/userland/src build/userland/root file_cmds ls cp mv rm mkdir rmdir ln chmod touch df stat dd
+
+      - name: text_cmds
+        id: text_cmds
+        continue-on-error: true
+        run: userland/build-commands.sh build/userland/dxb build/userland/src build/userland/root text_cmds cat grep sed wc head tail sort tr cut
+
       - name: Gate on the whole root
         if: always()
         run: tools/check-arm64-plain.sh build/userland/root
