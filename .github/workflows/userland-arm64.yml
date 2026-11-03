@@ -56,6 +56,11 @@ jobs:
       - name: libsystem_kernel
         run: userland/build-libsyscall.sh build/userland/dxb build/userland/root
 
+      - name: dyld private headers
+        run: |
+          mkdir -p build/userland/dxb/fakeroot/usr/local/include
+          cp -R build/userland/src/dyld/include/. build/userland/dxb/fakeroot/usr/local/include/
+
       - name: libsystem_platform
         id: platform
         continue-on-error: true
