@@ -117,8 +117,10 @@ into the stubs.
 ## 5a. Build status (CI `userland-arm64`, macos-14, Xcode 15.4)
 
 Built as plain arm64 for the Cortex-A72 and accepted by `tools/check-arm64-plain.sh`:
-`libsystem_kernel` (dylib and static), `libsystem_platform`, `libsystem_pthread`, `libsystem_blocks`, `libkeymgr`.
-Not run on QEMU yet. Next, in order: compiler-rt, Libc, libmalloc, libunwind/libdyld (dyld), libdispatch, then the stubs and umbrella.
+`libsystem_kernel` (dylib and static), `libsystem_platform`, `libsystem_pthread`, `libsystem_blocks`, `libkeymgr`,
+`libcompiler_rt`, `libsystem_c`, `libsystem_malloc`, and the stand-in `libsystem_trace`. Not run on QEMU yet.
+Next, in order: libunwind/libdyld and dyld itself, libdispatch, Libinfo/Libnotify, libm, the remaining closed-library
+stubs (asl, featureflags, sandbox, xpc, corecrypto, macho ...), then the `libSystem.B.dylib` umbrella.
 
 What the build needed (all in `userland/`, reuse it for the next libraries):
 
@@ -129,6 +131,13 @@ What the build needed (all in `userland/`, reuse it for the next libraries):
   `src/thread_self_restrict_stub.c` (APRR, reports unsupported).
 - libplatform has no Xcode project in the 13.5 tag: `build-libplatform.sh` compiles `src/` directly.
 - C++ projects need `CXXSTD=1` (libc++ headers before the C library headers).
+- More stand-ins in `include/` (`os/feature_private.h`, `os/log_private.h`, `apfs/apfs_fsctl.h`, `corecrypto/ccrng.h` on
+  getentropy, `dyld_version_shim.h`) and `src/` (`libplatform_bits.c` ffs/fls, `chkstk_darwin.s`, `stubs/libsystem_trace.c`
+  built by `build-stub-lib.sh`). `patch-libmalloc.sh` and `patch-libc.sh` fix source-level gaps (nano_zone.h on arm64,
+  dyld macros, cancelable variants must clear `__DARWIN_NON_CANCELABLE`).
+- libmalloc needs `-DOS_VARIANT_RESOLVED=1 -DOS_VARIANT_NOTRESOLVED=1` (defined by Apple's build, not in the sources);
+  libraries link against our own already-built libraries first (`LIBRARY_SEARCH_PATHS`), so build order matters.
+- compiler-rt: Xcode's `libclang_rt.osx.a` wrapped into a dylib, plus our `___chkstk_darwin`.
 
 ## 6. Known risks to check early
 
