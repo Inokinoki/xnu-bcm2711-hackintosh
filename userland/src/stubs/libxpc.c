@@ -51,3 +51,7 @@ void xpc_connection_set_event_handler(xpc_object_t connection, void *handler) { 
 void xpc_connection_resume(xpc_object_t connection) { (void)connection; }
 xpc_object_t xpc_connection_send_message_with_reply_sync(xpc_object_t connection, xpc_object_t message) { (void)connection; (void)message; return NULL; }
 uint64_t xpc_dictionary_get_uint64(xpc_object_t xdict, const char *key) { (void)xdict; (void)key; return 0; }
+
+/* liblaunch: no parent bootstrap port, and no launchd job state to swap */
+kern_return_t bootstrap_parent(mach_port_t bp, mach_port_t *parent_port) { (void)bp; *parent_port = MACH_PORT_NULL; return 1100; /* BOOTSTRAP_NOT_PRIVILEGED */ }
+void *vproc_swap_integer(void *vp, int key, int64_t *inval, int64_t *outval) { (void)vp; (void)key; (void)inval; if (outval) *outval = 0; return 0; }

@@ -48,6 +48,16 @@ cmake -S "$WORK/llvm-project/runtimes" -B "$WORK/llvm-build" -G Ninja \
 ninja -C "$WORK/llvm-build"
 ninja -C "$WORK/llvm-build" install
 
-mkdir -p "$OUT/usr/lib"
+mkdir -p "$OUT/usr/lib/system"
 cp -a "$WORK/llvm-install/lib/"*.dylib "$OUT/usr/lib/"
+# Apple's libraries list /usr/lib/system/libunwind.dylib as their dependency: install it there
+mv "$OUT/usr/lib/libunwind.1.0.dylib" "$OUT/usr/lib/system/libunwind.dylib"
+rm -f "$OUT"/usr/lib/libunwind*.dylib
+install_name_tool -id /usr/lib/system/libunwind.dylib "$OUT/usr/lib/system/libunwind.dylib"
+for f in "$OUT/usr/lib/libc++abi.1.0.dylib" "$OUT/usr/lib/libc++.1.0.dylib"; do
+	install_name_tool -change /usr/lib/libunwind.1.dylib /usr/lib/system/libunwind.dylib "$f" 2>/dev/null || true
+done
+for f in "$OUT/usr/lib/system/libunwind.dylib" "$OUT/usr/lib/libc++abi.1.0.dylib" "$OUT/usr/lib/libc++.1.0.dylib"; do
+	codesign --force -s - "$f"
+done
 ls -l "$OUT/usr/lib"

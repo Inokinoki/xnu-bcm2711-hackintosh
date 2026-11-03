@@ -28,3 +28,17 @@ setlogmask(int mask)
 
 /* libsystem_asl's _simple_asl_log, used by Libnotify and Libc's _simple.c */
 void _simple_asl_log(int level, const char *facility, const char *message) { (void)level; (void)facility; (void)message; }
+
+/* the asl client API (libsystem_c and Libinfo call it for the occasional log line): every call fails or returns NULL */
+void *asl_new(unsigned int type) { (void)type; return 0; }
+void *asl_open(const char *ident, const char *facility, unsigned int opts) { (void)ident; (void)facility; (void)opts; return 0; }
+int asl_set(void *obj, const char *key, const char *value) { (void)obj; (void)key; (void)value; return -1; }
+int asl_set_query(void *obj, const char *key, const char *value, unsigned int op) { (void)obj; (void)key; (void)value; (void)op; return -1; }
+const char *asl_get(void *obj, const char *key) { (void)obj; (void)key; return 0; }
+int asl_append(void *obj, void *other) { (void)obj; (void)other; return -1; }
+int asl_send(void *obj, void *msg) { (void)obj; (void)msg; return -1; }
+int asl_log(void *client, void *msg, int level, const char *format, ...) { (void)client; (void)msg; (void)level; (void)format; return -1; }
+void *asl_match(void *client, void *query, unsigned long long *last, unsigned long long start, unsigned int count, unsigned int duration, int dir) { (void)client; (void)query; (void)last; (void)start; (void)count; (void)duration; (void)dir; return 0; }
+void *asl_next(void *list) { (void)list; return 0; }
+void asl_release(void *obj) { (void)obj; }
+void asl_free(void *obj) { (void)obj; }

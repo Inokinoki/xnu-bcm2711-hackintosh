@@ -13,11 +13,10 @@ SDK=${SDK:-$(xcrun --sdk macosx --show-sdk-path)}
 
 RE=
 for l in libsystem_kernel libsystem_platform libsystem_pthread libsystem_c libsystem_malloc libsystem_blocks \
-	libsystem_trace libsystem_m libxpc libsystem_asl libcommonCrypto libcopyfile libremovefile libsystem_info libsystem_notify libcompiler_rt libkeymgr libdyld libdispatch; do
+	libsystem_trace libsystem_m libxpc libsystem_asl libcommonCrypto libcopyfile libremovefile libsystem_info libsystem_notify libsystem_collections libsystem_darwin libmacho libcorecrypto libsystem_featureflags libsystem_dnssd libquarantine libcompiler_rt libkeymgr libdyld libdispatch libunwind; do
 	f=$OUT/usr/lib/system/$l.dylib
 	[ -f "$f" ] && RE="$RE -Wl,-reexport_library,$f"
 done
-[ -f "$OUT/usr/lib/libunwind.1.dylib" ] && RE="$RE -Wl,-reexport_library,$OUT/usr/lib/libunwind.1.dylib"
 
 # shellcheck disable=SC2086
 xcrun clang -target arm64-apple-macos13.0 -mcpu=cortex-a72 -isysroot "$SDK" -dynamiclib -nostdlib \
