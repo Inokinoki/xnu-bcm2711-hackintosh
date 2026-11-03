@@ -40,3 +40,14 @@ bool os_variant_has_internal_diagnostics(const char *subsystem) { (void)subsyste
 bool os_variant_has_internal_content(const char *subsystem) { (void)subsystem; return false; }
 bool os_variant_has_internal_ui(const char *subsystem) { (void)subsystem; return false; }
 bool os_variant_allows_internal_security_policies(const char *subsystem) { (void)subsystem; return false; }
+
+/* more of the xpc surface that copyfile and libutil link against */
+struct _xpc_type_s { int unused; } _xpc_type_dictionary;
+
+bool _xpc_runtime_is_app_sandboxed(void) { return false; }
+const void *xpc_get_type(xpc_object_t object) { (void)object; return NULL; }
+xpc_object_t xpc_connection_create_mach_service(const char *name, void *targetq, uint64_t flags) { (void)name; (void)targetq; (void)flags; return NULL; }
+void xpc_connection_set_event_handler(xpc_object_t connection, void *handler) { (void)connection; (void)handler; }
+void xpc_connection_resume(xpc_object_t connection) { (void)connection; }
+xpc_object_t xpc_connection_send_message_with_reply_sync(xpc_object_t connection, xpc_object_t message) { (void)connection; (void)message; return NULL; }
+uint64_t xpc_dictionary_get_uint64(xpc_object_t xdict, const char *key) { (void)xdict; (void)key; return 0; }

@@ -3,6 +3,7 @@
  * service every identity-to-UUID translation and membership query fails with ENOENT; users and groups still
  * resolve through the file module (/etc/passwd, /etc/group).
  */
+#pragma GCC visibility push(default) /* the project builds with hidden visibility; these are the public symbols */
 #include <errno.h>
 #include <stddef.h>
 #include <sys/types.h>

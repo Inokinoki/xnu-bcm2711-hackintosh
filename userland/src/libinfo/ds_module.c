@@ -2,6 +2,7 @@
  * Replaces Libinfo's ds_module.c (the OpenDirectory lookup module, xpc pipes to opendirectoryd). The "ds" module
  * is unavailable; lookups use the file module.
  */
+#pragma GCC visibility push(default) /* the project builds with hidden visibility; these are the public symbols */
 struct si_mod_s;
 
 struct si_mod_s *si_module_static_ds(void) { return 0; }
