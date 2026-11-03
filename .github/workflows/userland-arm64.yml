@@ -179,7 +179,13 @@ jobs:
       - name: libsystem_notify
         id: notify
         continue-on-error: true
-        run: userland/build-xcode-lib.sh build/userland/dxb build/userland/src build/userland/root Libnotify libnotify
+        run: |
+          # the project links /usr/local/lib/libCrashReporterClient.a
+          mkdir -p build/userland/crc build/userland/root/usr/local/lib
+          xcrun clang -target arm64-apple-macos13.0 -mcpu=cortex-a72 -Os -c userland/src/crashreporterclient.c -o build/userland/crc/crc.o
+          xcrun ar rcs build/userland/root/usr/local/lib/libCrashReporterClient.a build/userland/crc/crc.o
+          LIB_EXTRA_LDFLAGS="-L$PWD/build/userland/root/usr/local/lib" \
+            userland/build-xcode-lib.sh build/userland/dxb build/userland/src build/userland/root Libnotify libnotify
 
       - name: libc++, libc++abi, libunwind (LLVM runtimes)
         id: llvm_runtimes
