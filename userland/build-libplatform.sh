@@ -19,7 +19,7 @@ SYSINC=
 for d in $HDR_PATHS; do SYSINC="$SYSINC -isystem $d"; done
 CFLAGS="-target arm64-apple-macos13.0 $CPU_FLAGS -Os -g -isysroot $SDK -w -fno-stack-protector -fdollars-in-identifiers
  -fno-common -momit-leaf-frame-pointer -D_FORTIFY_SOURCE=0 -DOSATOMIC_USE_INLINED=0 -DOSATOMIC_DEPRECATED=0
- -DOSSPINLOCK_USE_INLINED=0 -DOSSPINLOCK_DEPRECATED=0 -DOS_UNFAIR_LOCK_INLINE=0 $BRIDGEOS_DEF
+ -DOSSPINLOCK_USE_INLINED=0 -DOSSPINLOCK_DEPRECATED=0 -DOS_UNFAIR_LOCK_INLINE=0 $BRIDGEOS_DEF $BRIDGEOS_UNAVAIL $COMPAT_FLAGS
  -I$P/private -I$P/include -I$P/internal -I$P/src/os/resolver -I$P/src/atomics $SYSINC"
 
 n=0

@@ -69,6 +69,8 @@ jobs:
       - name: libsystem_blocks
         id: blocks
         continue-on-error: true
+        env:
+          CXXSTD: "1"
         run: userland/build-xcode-lib.sh build/userland/dxb build/userland/src build/userland/root libclosure Blocks
 
       - name: libkeymgr

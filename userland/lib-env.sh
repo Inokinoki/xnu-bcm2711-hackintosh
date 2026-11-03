@@ -4,8 +4,15 @@
 FAKEROOT_DIR=$DXB/fakeroot
 SDK=${SDK:-$(xcrun --sdk macosx --show-sdk-path)}
 SYSPRIV=$FAKEROOT_DIR/System/Library/Frameworks/System.framework/Versions/B/PrivateHeaders
-HDR_PATHS="$SYSPRIV $FAKEROOT_DIR/usr/local/include $FAKEROOT_DIR/usr/include"
+# fakeroot first (macOS 13.5), then what only the SDK has (e.g. usr/local/include/os/alloc_once_private.h)
+HDR_PATHS="$SYSPRIV $FAKEROOT_DIR/usr/local/include $FAKEROOT_DIR/usr/include $SDK/usr/local/include $SDK/System/Library/Frameworks/System.framework/PrivateHeaders"
+# libc++ must come before the C library headers in the search order, or <cstddef> and friends break
+[ -z "${CXXSTD:-}" ] || HDR_PATHS="$SDK/usr/include/c++/v1 $HDR_PATHS"
+# Xcode 15's SDK dropped the bridgeos availability macros that the 13.5 headers use
 BRIDGEOS_DEF='-D__API_AVAILABLE_PLATFORM_bridgeos(x)=bridgeos,introduced=x'
+BRIDGEOS_UNAVAIL='-D__API_UNAVAILABLE_PLATFORM_bridgeos=bridgeos,unavailable'
+# old code vs clang 15: these became errors
+COMPAT_FLAGS="-Wno-int-conversion -Wno-implicit-function-declaration -Wno-incompatible-function-pointer-types -Wno-error"
 CPU_FLAGS="-mcpu=cortex-a72"
 
 # Xcode does not ship BSD.xcconfig; drop the includes of it from a project's xcconfigs
