@@ -118,8 +118,9 @@ into the stubs.
 
 Built as plain arm64 for the Cortex-A72 and accepted by `tools/check-arm64-plain.sh`:
 `libsystem_kernel` (dylib and static), `libsystem_platform`, `libsystem_pthread`, `libsystem_blocks`, `libkeymgr`,
-`libcompiler_rt`, `libsystem_c`, `libsystem_malloc`, and the stand-in `libsystem_trace`. Not run on QEMU yet.
-Next, in order: libunwind/libdyld and dyld itself, libdispatch, Libinfo/Libnotify, libm, the remaining closed-library
+`libcompiler_rt`, `libsystem_c`, `libsystem_malloc`, `/usr/lib/dyld`, `libdyld.dylib`, and the stand-in `libsystem_trace`.
+Not run on QEMU yet.
+Next, in order: libunwind, libdispatch, Libinfo/Libnotify, libm, the remaining closed-library
 stubs (asl, featureflags, sandbox, xpc, corecrypto, macho ...), then the `libSystem.B.dylib` umbrella.
 
 What the build needed (all in `userland/`, reuse it for the next libraries):
