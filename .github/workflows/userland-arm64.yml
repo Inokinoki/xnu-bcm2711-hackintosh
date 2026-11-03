@@ -80,7 +80,7 @@ jobs:
         env:
           CXXSTD: "1"
           # no libobjc here: the plain C object model, no -upward-lobjc, no exception tables
-          LIB_EXTRA_CFLAGS: -DHAVE_OBJC=0
+          LIB_EXTRA_CFLAGS: -DHAVE_OBJC=0 -fno-exceptions
         run: |
           userland/build-xcode-lib.sh build/userland/dxb build/userland/src build/userland/root libclosure Blocks \
             OBJC_LDFLAGS= GCC_ENABLE_CPP_EXCEPTIONS=NO GCC_ENABLE_OBJC_EXCEPTIONS=NO
