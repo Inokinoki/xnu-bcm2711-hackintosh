@@ -94,6 +94,8 @@ jobs:
       - name: libsystem_malloc
         id: malloc
         continue-on-error: true
+        env:
+          LIB_EXTRA_CFLAGS: -include ${{ github.workspace }}/userland/include/dyld_version_shim.h
         run: |
           userland/patch-libmalloc.sh build/userland/src/libmalloc
           userland/build-xcode-lib.sh build/userland/dxb build/userland/src build/userland/root libmalloc libsystem_malloc
