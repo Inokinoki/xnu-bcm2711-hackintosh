@@ -5,7 +5,7 @@
 #
 #   tools/mkroot.sh ROOT OUT.img [SIZE_MB]
 #
-# Trimmed: no dSYM bundles, no .tbd/.a files, nothing under usr/local. Added: userland/rootfs (etc, SystemVersion.plist),
+# Trimmed: no dSYM bundles, no .tbd/.a files, nothing under usr/local, usr/share, usr/include, AppleInternal. Added: userland/rootfs (etc, SystemVersion.plist),
 # the directories a boot needs (dev, tmp, var, private), /bin/sh -> bash.
 set -eu
 HERE=$(cd "$(dirname "$0")/.." && pwd)
@@ -13,7 +13,7 @@ ROOT=${1:?usage: $0 ROOT OUT.img [SIZE_MB]}
 OUT=${2:?}
 STAGE=$(mktemp -d "${TMPDIR:-/tmp}/rootstage.XXXXXX")
 
-rsync -a --exclude '*.dSYM' --exclude '*.tbd' --exclude '*.a' --exclude '/usr/local' --exclude MANIFEST "$ROOT"/ "$STAGE"/
+rsync -a --exclude '*.dSYM' --exclude '*.tbd' --exclude '*.a' --exclude '/usr/local' --exclude '/usr/share' --exclude '/usr/include' --exclude '/AppleInternal' --exclude MANIFEST "$ROOT"/ "$STAGE"/
 rsync -a "$HERE/userland/rootfs"/ "$STAGE"/
 mkdir -p "$STAGE"/dev "$STAGE"/tmp "$STAGE"/var/root "$STAGE"/var/empty "$STAGE"/var/tmp "$STAGE"/private "$STAGE"/sbin "$STAGE"/bin
 chmod 1777 "$STAGE"/tmp "$STAGE"/var/tmp
@@ -27,9 +27,11 @@ echo "staged root: ${used} MB in $(find "$STAGE" | wc -l | tr -d ' ') entries; i
 NAME=BCM2711Root
 rm -f "$OUT" "$OUT.dmg" "$OUT.cdr"
 hdiutil create -size "${SIZE}m" -fs HFS+ -volname "$NAME" -layout NONE -ov "$OUT" >/dev/null
-DEV=$(hdiutil attach -owners on -nobrowse -noverify "$OUT.dmg" | awk '/Apple_HFS|HFS/ {print $1; exit}')
-MNT=$(mount | awk -v d="$DEV" '$1 == d {print $3; exit}')
-[ -n "$MNT" ] || MNT=/Volumes/$NAME
+ATTACH=$(hdiutil attach -owners on -nobrowse -noverify "$OUT.dmg")
+echo "$ATTACH"
+DEV=$(echo "$ATTACH" | head -1 | awk '{print $1}')
+MNT=$(echo "$ATTACH" | grep -o '/Volumes/.*$' | head -1)
+[ -n "$DEV" ] && [ -d "$MNT" ] || { echo "cannot find the mounted image"; exit 1; }
 sudo mdutil -i off "$MNT" >/dev/null 2>&1 || true
 sudo rsync -a "$STAGE"/ "$MNT"/
 sudo chown -R 0:0 "$MNT" 2>/dev/null || true
