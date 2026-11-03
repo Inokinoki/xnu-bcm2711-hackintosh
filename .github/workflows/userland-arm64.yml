@@ -94,6 +94,8 @@ jobs:
       - name: libsystem_c
         id: libc
         continue-on-error: true
+        env:
+          LIB_EXTRA_CFLAGS: -include ${{ github.workspace }}/userland/include/dyld_version_shim.h
         run: |
           # private headers of Libinfo that Libc includes
           cp build/userland/src/Libinfo/membership.subproj/membershipPriv.h build/userland/dxb/fakeroot/usr/local/include/
