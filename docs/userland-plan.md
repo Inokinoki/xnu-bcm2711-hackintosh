@@ -121,9 +121,12 @@ Built as plain arm64 for the Cortex-A72 and accepted by `tools/check-arm64-plain
 `libcompiler_rt`, `libsystem_c`, `libsystem_malloc`, `/usr/lib/dyld`, `libdyld.dylib`, `libdispatch` (C object model, no ObjC runtime; linked from the static archive
 target by `userland/build-libdispatch.sh`) the stand-in `libsystem_trace`, `libunwind`, `libc++abi` and `libc++` (upstream LLVM 17.0.6 runtimes, `userland/build-llvm-runtimes.sh`;
 libunwind has the PAC authenticate hints patched out) and the `libSystem.B.dylib` umbrella (`userland/build-libsystem.sh`,
-re-exports the libraries above). Not run on QEMU yet.
-Next, in order: Libinfo/Libnotify, libm, the remaining closed-library
-stubs (asl, featureflags, sandbox, xpc, corecrypto, macho ... the umbrella grows with them), then init/launchd and the commands.
+re-exports the libraries above), plus `libsystem_info` (Libinfo with the OpenDirectory and mDNSResponder modules replaced by
+stand-ins in `userland/src/libinfo/`: files-only lookups), `libsystem_notify` (client library only), `libsystem_m` (openlibm;
+the long double entry points are the double ones) and a `libxpc` stand-in (bootstrap look-ups fail, xpc objects are no-ops).
+Not run on QEMU yet.
+Next, in order: the remaining closed-library stubs (asl, featureflags, sandbox, corecrypto, macho ... the umbrella grows
+with them), then init/launchd (a real bootstrap server replaces the libxpc stand-in) and the commands.
 
 What the build needed (all in `userland/`, reuse it for the next libraries):
 
