@@ -14,10 +14,11 @@ SDK=${SDK:-$(xcrun --sdk macosx --show-sdk-path)}
 mkdir -p "$OUTROOT/$DIR"
 # libraries of /usr/lib/system are parts of the System umbrella; others (libncurses) are linked directly
 UMBRELLA=
-[ "$DIR" = usr/lib/system ] && UMBRELLA="-umbrella System"
+LIBS=-lSystem
+if [ "$DIR" = usr/lib/system ]; then UMBRELLA="-umbrella System"; LIBS="-lsystem_kernel -lsystem_c -ldyld"; fi
 # shellcheck disable=SC2086
 xcrun clang -target arm64-apple-macos13.0 -mcpu=cortex-a72 -Os -g -isysroot "$SDK" -I"$HERE/include" \
 	-Wno-error -dynamiclib -nostdlib \
-	-install_name "/$DIR/$NAME.dylib" $UMBRELLA -L"$OUTROOT/usr/lib/system" -L"$SDK/usr/lib/system" -lsystem_kernel -lsystem_c -ldyld \
+	-install_name "/$DIR/$NAME.dylib" $UMBRELLA -L"$OUTROOT/usr/lib/system" -L"$SDK/usr/lib/system" $LIBS \
 	-compatibility_version 1 -current_version 1 \
 	"$HERE/src/stubs/$NAME.c" -o "$OUTROOT/$DIR/$NAME.dylib"

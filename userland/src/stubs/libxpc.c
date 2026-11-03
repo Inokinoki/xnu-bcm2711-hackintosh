@@ -36,10 +36,6 @@ void xpc_release(xpc_object_t object) { (void)object; }
 
 struct _xpc_bool_s { int unused; } _xpc_bool_true, _xpc_bool_false;
 
-bool os_variant_has_internal_diagnostics(const char *subsystem) { (void)subsystem; return false; }
-bool os_variant_has_internal_content(const char *subsystem) { (void)subsystem; return false; }
-bool os_variant_has_internal_ui(const char *subsystem) { (void)subsystem; return false; }
-bool os_variant_allows_internal_security_policies(const char *subsystem) { (void)subsystem; return false; }
 
 /* more of the xpc surface that copyfile and libutil link against */
 struct _xpc_type_s { int unused; } _xpc_type_dictionary;

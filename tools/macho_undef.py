@@ -85,7 +85,7 @@ def parse(path):
         return None
     ncmds, = struct.unpack_from("<I", buf, 16)
     off = 32
-    info = {"id": None, "loads": [], "reexports": [], "exports": set(), "undefined": set()}
+    info = {"id": None, "loads": [], "reexports": [], "exports": set(), "undefined": {}}
     symoff = nsyms = stroff = 0
     trie = None
     for _ in range(ncmds):
@@ -119,7 +119,7 @@ def parse(path):
         kind = ntype & N_TYPE
         if kind == N_UNDF:
             if not desc & N_WEAK_REF:
-                info["undefined"].add(name)
+                info["undefined"][name] = desc >> 8  # library ordinal (two-level namespace)
         elif kind == N_SECT and not ntype & N_PEXT and trie is None:
             info["exports"].add(name)
     if trie:
@@ -165,16 +165,28 @@ def main():
     missing_libs = {}
     unresolved = {}  # symbol -> set of files
     for path, info in sorted(files.items()):
-        provided = set()
+        closure = set()
         for l in info["loads"]:
             lib = lookup(l)
             if lib:
-                provided |= exports_of(lib, set())
+                closure |= exports_of(lib, set())
             else:
                 missing_libs.setdefault(l, set()).add(path)
-        provided |= info["exports"]  # a file's own definitions (and the executable's)
-        for sym in info["undefined"]:
-            if sym not in provided and sym not in BUILTIN:
+        closure |= info["exports"]  # a file's own definitions (and the executable's)
+        for sym, ordinal in info["undefined"].items():
+            if sym in BUILTIN:
+                continue
+            if 1 <= ordinal <= len(info["loads"]):
+                # two-level namespace: dyld looks in that one library (and what it re-exports), nowhere else
+                lib = lookup(info["loads"][ordinal - 1])
+                ok = bool(lib) and sym in exports_of(lib, set())
+                if not ok and sym in closure:
+                    sym_note = f"{sym} (bound to {info['loads'][ordinal - 1]}, which does not export it)"
+                    unresolved.setdefault(sym_note, set()).add(path)
+                    continue
+            else:  # flat lookup, self or main executable: anything loaded will do
+                ok = sym in closure
+            if not ok:
                 unresolved.setdefault(sym, set()).add(path)
 
     print(f"{len(files)} Mach-O files, {len(unresolved)} unresolved symbols")

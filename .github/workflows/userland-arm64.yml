@@ -115,16 +115,15 @@ jobs:
           userland/patch-libc.sh build/userland/src/Libc
           userland/build-xcode-lib.sh build/userland/dxb build/userland/src build/userland/root Libc libsystem_c.dylib CR_LDFLAGS=
 
-      - name: libsystem_collections and libsystem_darwin (Libc targets)
+      - name: libsystem_collections (Libc target)
         id: libc_extra
         continue-on-error: true
         env:
           LIB_CFLAGS_VAR: WARNING_CFLAGS
         run: |
-          rc=0
-          userland/build-xcode-lib.sh build/userland/dxb build/userland/src build/userland/root Libc libsystem_collections CR_LDFLAGS= || rc=1
-          userland/build-xcode-lib.sh build/userland/dxb build/userland/src build/userland/root Libc libsystem_darwin.dylib CR_LDFLAGS= || rc=1
-          exit $rc
+          mkdir -p build/userland/dxb/fakeroot/usr/local/include/os
+          cp build/userland/src/Libc/collections/PublicHeader/*.h build/userland/dxb/fakeroot/usr/local/include/os/
+          userland/build-xcode-lib.sh build/userland/dxb build/userland/src build/userland/root Libc libsystem_collections CR_LDFLAGS=
 
       - name: libsystem_malloc
         id: malloc
@@ -206,7 +205,7 @@ jobs:
         id: stubs2
         continue-on-error: true
         run: |
-          for n in libsystem_asl libcommonCrypto libmacho libcorecrypto libsystem_featureflags libsystem_dnssd libquarantine; do
+          for n in libsystem_asl libsystem_darwin libcommonCrypto libmacho libcorecrypto libsystem_featureflags libsystem_dnssd libquarantine; do
             userland/build-stub-lib.sh build/userland/root $n
           done
           userland/build-stub-lib.sh build/userland/root libncurses.5.4 usr/lib
