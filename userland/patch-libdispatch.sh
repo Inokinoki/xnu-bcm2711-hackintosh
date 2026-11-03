@@ -35,3 +35,10 @@ PY
 # CLOCK_REALTIME reaches C++ as a plain int (Apple's internal SDK has the enum), clock_gettime_nsec_np wants clockid_t
 sed -i.bak 's|clock_gettime_nsec_np(CLOCK_REALTIME)|clock_gettime_nsec_np((clockid_t)CLOCK_REALTIME)|' "${1}/src/shims/time.h"
 rm -f "${1}/src/shims/time.h.bak"
+
+# xcodescripts/check-order.sh only verifies that Apple's symbol order files match the data symbols (it also needs
+# nm to find the installed dylib at a path our DSTROOT does not give it); the order files do not matter for us
+sed -i.bak '1a\
+exit 0
+' "${1}/xcodescripts/check-order.sh"
+rm -f "${1}/xcodescripts/check-order.sh.bak"
