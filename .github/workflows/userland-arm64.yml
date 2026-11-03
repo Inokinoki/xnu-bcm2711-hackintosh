@@ -108,6 +108,8 @@ jobs:
       - name: libsystem_c
         id: libc
         continue-on-error: true
+        env:
+          LIB_CFLAGS_VAR: WARNING_CFLAGS
         run: |
           # private headers of Libinfo that Libc includes
           cp build/userland/src/Libinfo/membership.subproj/membershipPriv.h build/userland/dxb/fakeroot/usr/local/include/

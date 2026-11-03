@@ -14,6 +14,8 @@ TARGET=${5:?}
 shift 5
 . "$HERE/lib-env.sh"
 
+# LIB_CFLAGS_VAR: build setting that carries our compiler flags (default OTHER_CFLAGS; Libc's variants set their
+# cancelable/non-cancelable macros in OTHER_CFLAGS at target level, which a command-line value would reorder)
 # LIB_EXTRA_SRC: a C file of stand-ins for symbols the closed parts of macOS provide, linked into the library
 EXTRA_LD=
 if [ -n "${LIB_EXTRA_SRC:-}" ]; then
@@ -39,7 +41,7 @@ env LD="$(xcrun -find clang)" LDPLUSPLUS="$(xcrun -find clang++)" \
 	LIBRARY_SEARCH_PATHS="$OUTROOT/usr/lib/system \$(inherited)" \
 	OTHER_LDFLAGS="\$(inherited) $EXTRA_LD" \
 	SUPPORTS_TEXT_BASED_API=NO BUILD_VARIANTS=normal \
-	OTHER_CFLAGS="\$(inherited) $CPU_FLAGS $COMPAT_FLAGS ${LIB_EXTRA_CFLAGS:-} \"$BRIDGEOS_DEF\" $BRIDGEOS_UNAVAIL" \
+	${LIB_CFLAGS_VAR:-OTHER_CFLAGS}="\$(inherited) $CPU_FLAGS $COMPAT_FLAGS ${LIB_EXTRA_CFLAGS:-} \"$BRIDGEOS_DEF\" $BRIDGEOS_UNAVAIL" \
 	HEADER_SEARCH_PATHS="\$(inherited)" \
 	SYSTEM_HEADER_SEARCH_PATHS="$HDRS" \
 	SYSTEM_FRAMEWORK_SEARCH_PATHS="$FAKEROOT_DIR/System/Library/Frameworks" \
