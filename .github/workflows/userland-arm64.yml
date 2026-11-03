@@ -91,6 +91,12 @@ jobs:
         continue-on-error: true
         run: userland/build-compiler-rt.sh build/userland/root
 
+      - name: Stand-ins for closed libraries
+        id: stubs
+        continue-on-error: true
+        run: |
+          userland/build-stub-lib.sh build/userland/root libsystem_trace
+
       - name: libsystem_c
         id: libc
         continue-on-error: true
