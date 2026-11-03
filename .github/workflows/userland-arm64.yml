@@ -111,7 +111,7 @@ jobs:
         env:
           LIB_CFLAGS_VAR: WARNING_CFLAGS
           # Xcode 15's new linker rejects the duplicate $NOCANCEL definitions Libc's variants produce
-          LIB_EXTRA_LDFLAGS: -Wl,-ld_classic
+          LIB_EXTRA_LDFLAGS: -ld_classic
         run: |
           # private headers of Libinfo that Libc includes
           cp build/userland/src/Libinfo/membership.subproj/membershipPriv.h build/userland/dxb/fakeroot/usr/local/include/
