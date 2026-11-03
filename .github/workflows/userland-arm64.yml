@@ -198,10 +198,12 @@ jobs:
         id: cmdlibs
         continue-on-error: true
         run: |
-          userland/build-xcode-lib.sh build/userland/dxb build/userland/src build/userland/root copyfile copyfile
-          userland/build-xcode-lib.sh build/userland/dxb build/userland/src build/userland/root removefile removefile
-          userland/build-xcode-lib.sh build/userland/dxb build/userland/src build/userland/root libutil util
+          rc=0
           cp build/userland/src/libutil/libutil.h build/userland/src/libutil/mntopts.h build/userland/dxb/fakeroot/usr/local/include/
+          userland/build-xcode-lib.sh build/userland/dxb build/userland/src build/userland/root copyfile copyfile || rc=1
+          userland/build-xcode-lib.sh build/userland/dxb build/userland/src build/userland/root removefile removefile || rc=1
+          userland/build-xcode-lib.sh build/userland/dxb build/userland/src build/userland/root libutil util || rc=1
+          exit $rc
 
       - name: libc++, libc++abi, libunwind (LLVM runtimes)
         id: llvm_runtimes
