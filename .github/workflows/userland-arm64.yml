@@ -51,7 +51,7 @@ jobs:
         run: userland/dxb-headers.sh build/userland/dxb
 
       - name: Libc and libmalloc headers
-        run: userland/install-headers.sh build/userland/dxb build/userland/src Libc:Libc libmalloc:libmalloc
+        run: userland/install-headers.sh build/userland/dxb build/userland/src Libc:Libc libmalloc:libmalloc libpthread:libsystem_pthread
 
       - name: libsystem_kernel
         run: userland/build-libsyscall.sh build/userland/dxb build/userland/root

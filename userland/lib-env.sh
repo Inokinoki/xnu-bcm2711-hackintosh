@@ -4,8 +4,9 @@
 FAKEROOT_DIR=$DXB/fakeroot
 SDK=${SDK:-$(xcrun --sdk macosx --show-sdk-path)}
 SYSPRIV=$FAKEROOT_DIR/System/Library/Frameworks/System.framework/Versions/B/PrivateHeaders
-# fakeroot first (macOS 13.5), then what only the SDK has (e.g. usr/local/include/os/alloc_once_private.h)
-HDR_PATHS="$SYSPRIV $FAKEROOT_DIR/usr/local/include $FAKEROOT_DIR/usr/include $SDK/usr/local/include $SDK/System/Library/Frameworks/System.framework/PrivateHeaders"
+# fakeroot first (macOS 13.5), then what only the SDK has, then our stand-ins for headers missing from the open source
+# (userland/include; the caller sets HERE to the userland directory)
+HDR_PATHS="$SYSPRIV $FAKEROOT_DIR/usr/local/include $FAKEROOT_DIR/usr/include $SDK/usr/local/include $SDK/System/Library/Frameworks/System.framework/PrivateHeaders $HERE/include"
 # libc++ must come before the C library headers in the search order, or <cstddef> and friends break
 [ -z "${CXXSTD:-}" ] || HDR_PATHS="$SDK/usr/include/c++/v1 $HDR_PATHS"
 # Xcode 15's SDK dropped the bridgeos availability macros that the 13.5 headers use
