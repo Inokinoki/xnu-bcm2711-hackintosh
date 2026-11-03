@@ -94,12 +94,17 @@ jobs:
       - name: libsystem_malloc
         id: malloc
         continue-on-error: true
-        run: userland/build-xcode-lib.sh build/userland/dxb build/userland/src build/userland/root libmalloc libsystem_malloc
+        run: |
+          userland/patch-libmalloc.sh build/userland/src/libmalloc
+          userland/build-xcode-lib.sh build/userland/dxb build/userland/src build/userland/root libmalloc libsystem_malloc
 
       - name: libsystem_c
         id: libc
         continue-on-error: true
-        run: userland/build-xcode-lib.sh build/userland/dxb build/userland/src build/userland/root Libc libsystem_c.dylib
+        run: |
+          # private headers of Libinfo that Libc includes
+          cp build/userland/src/Libinfo/membership.subproj/membershipPriv.h build/userland/dxb/fakeroot/usr/local/include/
+          userland/build-xcode-lib.sh build/userland/dxb build/userland/src build/userland/root Libc libsystem_c.dylib
 
       - name: Gate on the whole root
         if: always()
