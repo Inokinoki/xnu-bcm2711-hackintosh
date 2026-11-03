@@ -92,3 +92,7 @@ _os_log_fault_impl(void *dso, os_log_t log, os_log_type_t type, const char *form
 	(void)dso; (void)log; (void)buf; (void)size;
 	emit_format(type, format);
 }
+
+/* libSystem_initializer: nothing to initialize, nothing to reset after fork */
+void _libtrace_init(void) { }
+void _libtrace_fork_child(void) { }

@@ -64,3 +64,5 @@ void *asl_match(void *client, void *query, unsigned long long *last, unsigned lo
 void *asl_next(void *list) { (void)list; return 0; }
 void asl_release(void *obj) { (void)obj; }
 void asl_free(void *obj) { (void)obj; }
+
+void _asl_fork_child(void) { }

@@ -9,3 +9,5 @@ bool os_variant_has_internal_diagnostics(const char *subsystem) { (void)subsyste
 bool os_variant_has_internal_content(const char *subsystem) { (void)subsystem; return false; }
 bool os_variant_has_internal_ui(const char *subsystem) { (void)subsystem; return false; }
 bool os_variant_allows_internal_security_policies(const char *subsystem) { (void)subsystem; return false; }
+
+void __libdarwin_init(void) { }

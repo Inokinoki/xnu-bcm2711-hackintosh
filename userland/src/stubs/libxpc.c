@@ -51,3 +51,9 @@ uint64_t xpc_dictionary_get_uint64(xpc_object_t xdict, const char *key) { (void)
 /* liblaunch: no parent bootstrap port, and no launchd job state to swap */
 kern_return_t bootstrap_parent(mach_port_t bp, mach_port_t *parent_port) { (void)bp; *parent_port = MACH_PORT_NULL; return 1100; /* BOOTSTRAP_NOT_PRIVILEGED */ }
 void *vproc_swap_integer(void *vp, int key, int64_t *inval, int64_t *outval) { (void)vp; (void)key; (void)inval; if (outval) *outval = 0; return 0; }
+
+/* libSystem_initializer calls these: libxpc has no state to set up or to reset in a forked child */
+void _libxpc_initializer(void) { }
+void xpc_atfork_prepare(void) { }
+void xpc_atfork_parent(void) { }
+void xpc_atfork_child(void) { }

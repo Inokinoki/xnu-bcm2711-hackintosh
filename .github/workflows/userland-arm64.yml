@@ -206,7 +206,7 @@ jobs:
         id: stubs2
         continue-on-error: true
         run: |
-          for n in libsystem_asl libsystem_darwin libcommonCrypto libmacho libcorecrypto libsystem_featureflags libsystem_dnssd libquarantine; do
+          for n in libsystem_asl libsystem_darwin libsystem_configuration libcommonCrypto libmacho libcorecrypto libsystem_featureflags libsystem_dnssd libquarantine; do
             userland/build-stub-lib.sh build/userland/root $n
           done
           userland/build-stub-lib.sh build/userland/root libncurses.5.4 usr/lib
@@ -232,6 +232,9 @@ jobs:
       - name: libSystem umbrella
         id: libsystem
         continue-on-error: true
+        env:
+          LIBSYSTEM_DXB: build/userland/dxb
+          LIBSYSTEM_SRC: build/userland/src
         run: userland/build-libsystem.sh build/userland/root
 
       - name: init (/sbin/launchd)
