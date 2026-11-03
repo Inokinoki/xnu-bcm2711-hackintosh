@@ -8,4 +8,7 @@
 #ifndef dyld_platform_version_macOS_13_0
 #define dyld_platform_version_macOS_13_0 ((dyld_build_version_t){PLATFORM_MACOS, 0x000d0000})
 #endif
+#ifndef dyld_platform_version_macOS_10_9
+#define dyld_platform_version_macOS_10_9 ((dyld_build_version_t){PLATFORM_MACOS, 0x000a0900})
+#endif
 #endif
