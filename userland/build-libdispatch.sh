@@ -27,4 +27,4 @@ xcrun clang -target arm64-apple-macos13.0 -mcpu=cortex-a72 -isysroot "$SDK" -dyn
 	-compatibility_version 1 -current_version 1 \
 	-L"$OUT/usr/lib/system" -L"$SDK/usr/lib/system" \
 	-lsystem_kernel -lsystem_c -lsystem_pthread -lsystem_malloc -lsystem_platform -lsystem_blocks -lcompiler_rt -ldyld \
-	-Wl,-all_load "$A" "$DXB/build/libdispatch_stubs.o" -o "$OUT/usr/lib/system/libdispatch.dylib"
+	-Wl,-all_load "$A" "$DXB/build/libdispatch_stubs.o" "$(xcrun clang -print-resource-dir)/lib/darwin/libclang_rt.osx.a" -o "$OUT/usr/lib/system/libdispatch.dylib"

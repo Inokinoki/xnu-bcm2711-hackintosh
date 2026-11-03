@@ -42,3 +42,7 @@ sed -i.bak '1a\
 exit 0
 ' "${1}/xcodescripts/check-order.sh"
 rm -f "${1}/xcodescripts/check-order.sh.bak"
+
+# no Objective-C runtime in this userland: use libdispatch's plain C object model (init.c, not object.m)
+sed -i.bak 's|#define HAVE_OBJC 1|#define HAVE_OBJC 0|' "${1}/config/config.h"
+rm -f "${1}/config/config.h.bak"
