@@ -94,12 +94,11 @@ jobs:
       - name: libsystem_c
         id: libc
         continue-on-error: true
-        env:
-          LIB_EXTRA_CFLAGS: -include ${{ github.workspace }}/userland/include/dyld_version_shim.h
         run: |
           # private headers of Libinfo that Libc includes
           cp build/userland/src/Libinfo/membership.subproj/membershipPriv.h build/userland/dxb/fakeroot/usr/local/include/
           cp build/userland/src/libclosure/Block_private.h build/userland/dxb/fakeroot/usr/local/include/
+          userland/patch-libc.sh build/userland/src/Libc
           userland/build-xcode-lib.sh build/userland/dxb build/userland/src build/userland/root Libc libsystem_c.dylib
 
       - name: libsystem_malloc
