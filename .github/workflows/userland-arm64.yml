@@ -151,6 +151,7 @@ jobs:
         continue-on-error: true
         env:
           CXXSTD: "1"
+          LIB_EXTRA_SRC: ${{ github.workspace }}/userland/src/libdispatch_stubs.c
           LIB_EXTRA_CFLAGS: -DOS_VARIANT_RESOLVED=1 -DOS_VARIANT_NOTRESOLVED=1 -DDISPATCH_SEND_ACTIVITY_IN_MSGV=0 -DDISPATCH_USE_DTRACE=0 -D_DARWIN_C_SOURCE -DOS_ATOMIC_CONFIG_MEMORY_ORDER_DEPENDENCY=1 -include ${{ github.workspace }}/build/userland/dxb/fakeroot/usr/include/time.h -include ${{ github.workspace }}/build/userland/src/libclosure/Block.h -I${{ github.workspace }}/build/userland/src/libdispatch
         run: |
           userland/patch-libdispatch.sh build/userland/src/libdispatch
