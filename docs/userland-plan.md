@@ -119,9 +119,11 @@ into the stubs.
 Built as plain arm64 for the Cortex-A72 and accepted by `tools/check-arm64-plain.sh`:
 `libsystem_kernel` (dylib and static), `libsystem_platform`, `libsystem_pthread`, `libsystem_blocks`, `libkeymgr`,
 `libcompiler_rt`, `libsystem_c`, `libsystem_malloc`, `/usr/lib/dyld`, `libdyld.dylib`, `libdispatch` (C object model, no ObjC runtime; linked from the static archive
-target by `userland/build-libdispatch.sh`) and the stand-in `libsystem_trace`. Not run on QEMU yet.
-Next, in order: libunwind (not in `dyld-1066.10` after all: upstream LLVM runtimes together with libc++/libc++abi), Libinfo/Libnotify, libm, the remaining closed-library
-stubs (asl, featureflags, sandbox, xpc, corecrypto, macho ...), then the `libSystem.B.dylib` umbrella.
+target by `userland/build-libdispatch.sh`) the stand-in `libsystem_trace`, `libunwind`, `libc++abi` and `libc++` (upstream LLVM 17.0.6 runtimes, `userland/build-llvm-runtimes.sh`;
+libunwind has the PAC authenticate hints patched out) and the `libSystem.B.dylib` umbrella (`userland/build-libsystem.sh`,
+re-exports the libraries above). Not run on QEMU yet.
+Next, in order: Libinfo/Libnotify, libm, the remaining closed-library
+stubs (asl, featureflags, sandbox, xpc, corecrypto, macho ... the umbrella grows with them), then init/launchd and the commands.
 
 What the build needed (all in `userland/`, reuse it for the next libraries):
 
