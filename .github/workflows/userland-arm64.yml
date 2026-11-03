@@ -172,6 +172,7 @@ jobs:
         id: info
         continue-on-error: true
         run: |
+          userland/patch-libinfo.sh build/userland/src/Libinfo
           LIB_EXTRA_CFLAGS="$(for d in build/userland/src/Libinfo/*.subproj; do printf -- '-I%s ' "$PWD/$d"; done)" \
             userland/build-xcode-lib.sh build/userland/dxb build/userland/src build/userland/root Libinfo Libinfo
 
