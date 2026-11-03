@@ -61,7 +61,21 @@ jobs:
         run: |
           export PATH="$(brew --prefix coreutils)/libexec/gnubin:$PATH"
           kernel=$(find build/kernel -maxdepth 1 -type f -name 'kernel.development.bcm2837' | head -1)
-          RAMDISK=build/root.img MEM=2G CC=aarch64-elf-gcc OUT=$PWD/build/qemu tools/pi4-qemu-boot.sh "$kernel" 420
+          # -d int logs every exception QEMU takes (ESR/FAR/ELR): the fatal user-mode fault shows up there
+          QEMU_D=int,guest_errors RAMDISK=build/root.img MEM=2G CC=aarch64-elf-gcc OUT=$PWD/build/qemu tools/pi4-qemu-boot.sh "$kernel" 420
+
+      - name: Exceptions taken from user mode (QEMU -d int)
+        if: always()
+        run: |
+          ls -l build/qemu/qemu.log || true
+          grep -c "Taking exception" build/qemu/qemu.log || true
+          echo "--- sample of the log format"
+          grep -m 12 -n "Taking exception" build/qemu/qemu.log || true
+          echo "--- last 60 lines before the end"
+          tail -n 60 build/qemu/qemu.log || true
+          grep -E "from EL0|EL0 to EL1" build/qemu/qemu.log | wc -l || true
+          # keep a compact copy of everything that came from EL0 for the artifact
+          grep -B1 -A4 -E "from EL0|EL0 to EL1" build/qemu/qemu.log | tail -n 4000 > build/qemu/el0-exceptions.log || true
 
       - name: Console log
         if: always()
@@ -76,7 +90,7 @@ jobs:
           name: qemu-boot-log
           path: |
             build/qemu/uart1.log
-            build/qemu/qemu.log
+            build/qemu/el0-exceptions.log
           if-no-files-found: warn
           retention-days: 14
 
