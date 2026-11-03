@@ -30,4 +30,8 @@ struct apfs_dir_stats_ext {
 
 #define APFSIOC_GET_DIR_STATS_EXT _IOWR('J', 88, struct apfs_dir_stats_ext)
 
+/* removefile's purgeable-space flag: an fsctl only APFS answers */
+#define APFS_CLEAR_PURGEABLE 0x1
+#define APFSIOC_MARK_PURGEABLE _IOW('J', 80, uint64_t)
+
 #endif /* __APFS_FSCTL_H__ */

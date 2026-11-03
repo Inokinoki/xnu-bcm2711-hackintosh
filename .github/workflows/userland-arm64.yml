@@ -202,7 +202,7 @@ jobs:
           cp build/userland/src/libutil/libutil.h build/userland/src/libutil/mntopts.h build/userland/dxb/fakeroot/usr/local/include/
           userland/build-xcode-lib.sh build/userland/dxb build/userland/src build/userland/root copyfile copyfile || rc=1
           userland/build-xcode-lib.sh build/userland/dxb build/userland/src build/userland/root removefile removefile || rc=1
-          userland/build-xcode-lib.sh build/userland/dxb build/userland/src build/userland/root libutil util || rc=1
+          CXXSTD=1 userland/build-xcode-lib.sh build/userland/dxb build/userland/src build/userland/root libutil util || rc=1
           exit $rc
 
       - name: libc++, libc++abi, libunwind (LLVM runtimes)
