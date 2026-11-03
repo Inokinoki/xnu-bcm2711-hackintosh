@@ -138,7 +138,7 @@ jobs:
         env:
           CXXSTD: "1"
           LIB_EXTRA_HDRS: ${{ github.workspace }}/userland/include-dyld
-          LIB_EXTRA_CFLAGS: -include ${{ github.workspace }}/userland/include-dyld/os/thread_self_restrict.h
+          LIB_EXTRA_CFLAGS: -include ${{ github.workspace }}/userland/include-dyld/dyld_compat.h
         run: |
           userland/patch-dyld.sh build/userland/src/dyld
           for t in dyld libdyld.dylib; do
