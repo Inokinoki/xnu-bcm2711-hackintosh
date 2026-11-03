@@ -140,7 +140,8 @@ jobs:
         run: |
           userland/patch-dyld.sh build/userland/src/dyld
           for t in dyld libdyld.dylib; do
-            userland/build-xcode-lib.sh build/userland/dxb build/userland/src build/userland/root dyld "$t" DYLD_LIBS_DIR="$PWD/build/userland/root/usr/local/lib/dyld"
+            userland/build-xcode-lib.sh build/userland/dxb build/userland/src build/userland/root dyld "$t" DYLD_LIBS_DIR="$PWD/build/userland/root/usr/local/lib/dyld" \
+              DYLD_EXTRA_INC="-idirafter $PWD/build/userland/dxb/fakeroot/usr/local/include -idirafter $PWD/userland/include"
           done
 
       - name: Gate on the whole root
