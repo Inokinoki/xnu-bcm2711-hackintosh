@@ -152,6 +152,7 @@ jobs:
         env:
           LIB_EXTRA_CFLAGS: -DOS_VARIANT_RESOLVED=1 -DOS_VARIANT_NOTRESOLVED=1
         run: |
+          userland/patch-libdispatch.sh build/userland/src/libdispatch
           userland/build-xcode-lib.sh build/userland/dxb build/userland/src build/userland/root libdispatch libdispatch
 
       - name: Gate on the whole root
