@@ -32,6 +32,9 @@ for f in $(cd "$P" && find src -type f \( -name '*.c' -o -name '*.s' \) | sort);
 	*) xcrun clang $CFLAGS -c "$P/$f" -o "$o" ;;
 	esac
 done
+# stand-ins for what libplatform keeps in closed assembly on macOS
+n=$((n + 1))
+xcrun clang $CFLAGS -c "$HERE/src/libplatform_bits.c" -o "$OBJ/$n-libplatform_bits.o"
 echo "compiled $n files"
 
 # shellcheck disable=SC2086

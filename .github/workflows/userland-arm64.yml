@@ -91,6 +91,14 @@ jobs:
         continue-on-error: true
         run: userland/build-compiler-rt.sh build/userland/root
 
+      - name: Where do ___chkstk_darwin and flsl come from
+        continue-on-error: true
+        run: |
+          for l in platform pthread kernel; do echo "== $l"; xcrun nm -gU build/userland/root/usr/lib/system/libsystem_$l.dylib | grep -E "chkstk|flsl|ffsl" || true; done
+          echo "== SDK stubs"
+          grep -l "chkstk_darwin" "$(xcrun --sdk macosx --show-sdk-path)"/usr/lib/system/*.tbd || true
+          grep -l "_flsl" "$(xcrun --sdk macosx --show-sdk-path)"/usr/lib/system/*.tbd || true
+
       - name: Stand-ins for closed libraries
         id: stubs
         continue-on-error: true
