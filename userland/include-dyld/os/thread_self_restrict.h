@@ -4,8 +4,8 @@
  * calls must still compile. Pulled in with -include (LIB_EXTRA_CFLAGS in the workflow), as dyld does not include
  * it itself.
  */
-#ifndef __OS_THREAD_SELF_RESTRICT_H__
-#define __OS_THREAD_SELF_RESTRICT_H__
+#ifndef __DYLD_TPRO_STANDIN_H__
+#define __DYLD_TPRO_STANDIN_H__
 #ifndef __ASSEMBLER__ /* -include also reaches the .s files */
 
 #include <stdbool.h>
@@ -15,4 +15,4 @@ static inline void os_thread_self_restrict_tpro_to_rw(void) { }
 static inline void os_thread_self_restrict_tpro_to_ro(void) { }
 
 #endif
-#endif /* __OS_THREAD_SELF_RESTRICT_H__ */
+#endif /* __DYLD_TPRO_STANDIN_H__ */

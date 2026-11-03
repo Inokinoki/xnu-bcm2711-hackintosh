@@ -7,7 +7,7 @@
 #ifndef __ASSEMBLER__
 
 #include <fcntl.h>
-#include <os/thread_self_restrict.h>
+#include "os/thread_self_restrict.h" /* ours, next to this file: <os/...> finds the xnu header, which has no TPRO calls */
 
 #endif
 #endif /* __DYLD_COMPAT_H__ */
