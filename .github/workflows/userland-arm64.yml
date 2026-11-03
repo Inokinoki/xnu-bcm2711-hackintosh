@@ -56,8 +56,35 @@ jobs:
       - name: libsystem_kernel
         run: userland/build-libsyscall.sh build/userland/dxb build/userland/root
 
+      - name: libsystem_platform
+        id: platform
+        continue-on-error: true
+        run: userland/build-libplatform.sh build/userland/dxb build/userland/src build/userland/root
+
+      - name: libsystem_pthread
+        id: pthread
+        continue-on-error: true
+        run: userland/build-xcode-lib.sh build/userland/dxb build/userland/src build/userland/root libpthread libsystem_pthread
+
+      - name: libsystem_blocks
+        id: blocks
+        continue-on-error: true
+        run: userland/build-xcode-lib.sh build/userland/dxb build/userland/src build/userland/root libclosure Blocks
+
+      - name: libkeymgr
+        id: keymgr
+        continue-on-error: true
+        run: userland/build-xcode-lib.sh build/userland/dxb build/userland/src build/userland/root keymgr libkeymgr.dylib
+
       - name: Gate on the whole root
+        if: always()
         run: tools/check-arm64-plain.sh build/userland/root
+
+      - name: Fail if a library step failed
+        if: always()
+        run: |
+          echo "platform=${{ steps.platform.outcome }} pthread=${{ steps.pthread.outcome }} blocks=${{ steps.blocks.outcome }} keymgr=${{ steps.keymgr.outcome }}"
+          test "${{ steps.platform.outcome }}${{ steps.pthread.outcome }}${{ steps.blocks.outcome }}${{ steps.keymgr.outcome }}" = successsuccesssuccesssuccess
 
       - name: Record sources
         run: cp build/userland/src/MANIFEST build/userland/root/MANIFEST
