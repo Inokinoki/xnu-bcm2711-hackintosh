@@ -23,6 +23,11 @@ if [ -n "${LIB_EXTRA_SRC:-}" ]; then
 	EXTRA_LD=$extra_obj
 fi
 
+# <System/sys/...> framework-style includes: the version directory has no Headers/PrivateHeaders/Current links
+SF=$FAKEROOT_DIR/System/Library/Frameworks/System.framework
+[ -e "$SF/Versions/Current" ] || ln -sfn B "$SF/Versions/Current"
+for d in Headers PrivateHeaders; do [ -e "$SF/$d" ] || ln -sfn "Versions/Current/$d" "$SF/$d"; done
+
 strip_bsd_xcconfig "$SRC/$PROJECT"
 cd "$SRC/$PROJECT"
 HDRS=
@@ -36,6 +41,7 @@ env LD="$(xcrun -find clang)" LDPLUSPLUS="$(xcrun -find clang++)" \
 	OTHER_CFLAGS="\$(inherited) $CPU_FLAGS $COMPAT_FLAGS ${LIB_EXTRA_CFLAGS:-} \"$BRIDGEOS_DEF\" $BRIDGEOS_UNAVAIL" \
 	HEADER_SEARCH_PATHS="\$(inherited)" \
 	SYSTEM_HEADER_SEARCH_PATHS="$HDRS" \
+	SYSTEM_FRAMEWORK_SEARCH_PATHS="$FAKEROOT_DIR/System/Library/Frameworks" \
 	OBJROOT="$DXB/build/$PROJECT-$TARGET.obj" SYMROOT="$DXB/build/$PROJECT-$TARGET.sym" \
 	DSTROOT="$OUTROOT" FAKEROOT_DIR="$FAKEROOT_DIR" \
 	RC_ProjectSourceVersion=1 RC_ProjectNameAndSourceVersion="$PROJECT-1" "$@"

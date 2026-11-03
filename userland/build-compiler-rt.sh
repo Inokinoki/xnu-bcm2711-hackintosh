@@ -13,4 +13,4 @@ test -f "$A"
 xcrun clang -target arm64-apple-macos13.0 -isysroot "$SDK" -dynamiclib -nostdlib \
 	-install_name /usr/lib/system/libcompiler_rt.dylib -umbrella System \
 	-compatibility_version 1 -current_version 1 \
-	-Wl,-all_load "$A" -o "$OUTROOT/usr/lib/system/libcompiler_rt.dylib"
+	-L"$OUTROOT/usr/lib/system" -lsystem_kernel -Wl,-all_load "$A" -o "$OUTROOT/usr/lib/system/libcompiler_rt.dylib"
