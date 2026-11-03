@@ -99,7 +99,7 @@ jobs:
           cp build/userland/src/Libinfo/membership.subproj/membershipPriv.h build/userland/dxb/fakeroot/usr/local/include/
           cp build/userland/src/libclosure/Block_private.h build/userland/dxb/fakeroot/usr/local/include/
           userland/patch-libc.sh build/userland/src/Libc
-          userland/build-xcode-lib.sh build/userland/dxb build/userland/src build/userland/root Libc libsystem_c.dylib
+          userland/build-xcode-lib.sh build/userland/dxb build/userland/src build/userland/root Libc libsystem_c.dylib CR_LDFLAGS=
 
       - name: libsystem_malloc
         id: malloc
