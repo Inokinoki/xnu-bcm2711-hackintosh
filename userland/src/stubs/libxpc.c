@@ -33,6 +33,8 @@ void xpc_dictionary_set_string(xpc_object_t xdict, const char *key, const char *
 void xpc_dictionary_set_uint64(xpc_object_t xdict, const char *key, uint64_t value) { (void)xdict; (void)key; (void)value; }
 void xpc_release(xpc_object_t object) { (void)object; }
 
+struct _xpc_bool_s { int unused; } _xpc_bool_true, _xpc_bool_false;
+
 bool os_variant_has_internal_diagnostics(const char *subsystem) { (void)subsystem; return false; }
 bool os_variant_has_internal_content(const char *subsystem) { (void)subsystem; return false; }
 bool os_variant_has_internal_ui(const char *subsystem) { (void)subsystem; return false; }
