@@ -29,7 +29,7 @@ if [ -n "${LIBSYSTEM_DXB:-}" ] && [ -n "${LIBSYSTEM_SRC:-}" ]; then
 	OUTROOT=$OUT
 	. "$HERE/lib-env.sh"
 	SYSINC=
-	for d in $HDR_PATHS "$SRC/Libc/darwin" "$SRC/xnu/libsyscall/wrappers" "$SRC/libmalloc/private" "$SRC/xnu/EXTERNAL_HEADERS"; do
+	for d in $HDR_PATHS "$SRC/Libc/darwin" "$SRC/xnu/libsyscall/wrappers" "$SRC/libmalloc/private" ; do
 		SYSINC="$SYSINC -isystem $d"
 	done
 	INIT_OBJ=$DXB/build/libsystem_init.o
