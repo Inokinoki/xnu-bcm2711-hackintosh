@@ -19,6 +19,8 @@ if [ ! -d "$WORK/llvm-project/.git" ]; then
 fi
 git -C "$WORK/llvm-project" log -1 --format="llvm-project %H"
 
+# the builtins (__divti3 ...) are hidden in libcompiler_rt.dylib: link them in statically
+RT=$(xcrun clang -print-resource-dir)/lib/darwin/libclang_rt.osx.a
 LDF="-nostdlib -L$STAGE -L$OUT/usr/lib/system"
 cmake -S "$WORK/llvm-project/runtimes" -B "$WORK/llvm-build" -G Ninja \
 	-DCMAKE_BUILD_TYPE=Release \
@@ -26,7 +28,7 @@ cmake -S "$WORK/llvm-project/runtimes" -B "$WORK/llvm-build" -G Ninja \
 	-DCMAKE_OSX_SYSROOT="$SDK" -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_DEPLOYMENT_TARGET=13.0 \
 	-DCMAKE_C_FLAGS="-mcpu=cortex-a72" -DCMAKE_CXX_FLAGS="-mcpu=cortex-a72" \
 	-DCMAKE_TRY_COMPILE_TARGET_TYPE=STATIC_LIBRARY \
-	-DCMAKE_SHARED_LINKER_FLAGS="$LDF -lSystem" -DCMAKE_EXE_LINKER_FLAGS="$LDF -lSystem" \
+	-DCMAKE_SHARED_LINKER_FLAGS="$LDF -lSystem $RT" -DCMAKE_EXE_LINKER_FLAGS="$LDF -lSystem $RT" \
 	-DCMAKE_INSTALL_PREFIX="$WORK/llvm-install" -DCMAKE_INSTALL_NAME_DIR=/usr/lib \
 	-DLLVM_ENABLE_RUNTIMES="libunwind;libcxxabi;libcxx" \
 	-DLLVM_INCLUDE_TESTS=OFF -DLLVM_ENABLE_ASSERTIONS=OFF \
