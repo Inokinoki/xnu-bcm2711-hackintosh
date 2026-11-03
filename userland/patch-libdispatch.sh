@@ -31,3 +31,7 @@ s = s.replace(blk, "")
 s = s.replace(anchor, blk + "\n" + anchor)
 open(p, "w").write(s)
 PY
+
+# CLOCK_REALTIME reaches C++ as a plain int (Apple's internal SDK has the enum), clock_gettime_nsec_np wants clockid_t
+sed -i.bak 's|clock_gettime_nsec_np(CLOCK_REALTIME)|clock_gettime_nsec_np((clockid_t)CLOCK_REALTIME)|' "${1}/src/shims/time.h"
+rm -f "${1}/src/shims/time.h.bak"
