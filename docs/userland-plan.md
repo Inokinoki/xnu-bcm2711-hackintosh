@@ -114,6 +114,22 @@ is strictly sequential: expect most of the time to go into libSystem initialisat
 `__libkernel_init`, `__libplatform_init`, `__pthread_init`, `_libc_initializer`, `dispatch_init` in that order) and
 into the stubs.
 
+## 5a. Build status (CI `userland-arm64`, macos-14, Xcode 15.4)
+
+Built as plain arm64 for the Cortex-A72 and accepted by `tools/check-arm64-plain.sh`:
+`libsystem_kernel` (dylib and static), `libsystem_platform`, `libsystem_pthread`, `libsystem_blocks`, `libkeymgr`.
+Not run on QEMU yet. Next, in order: compiler-rt, Libc, libmalloc, libunwind/libdyld (dyld), libdispatch, then the stubs and umbrella.
+
+What the build needed (all in `userland/`, reuse it for the next libraries):
+
+- Headers come from `dxb/fakeroot` (xnu 13.5 with our kernel patches, plus Libc, libmalloc, libpthread, dyld private
+  headers), searched before the runner's SDK; `lib-env.sh` has the order. Xcode 15.x, not 16 (bridgeos availability macros).
+- Xcode lacks `BSD.xcconfig`: the includes are stripped. clang 15 turned old-code warnings into errors: `COMPAT_FLAGS`.
+- Stand-ins for what the open source lacks: `include/os/alloc_once_private.h`, `include/pthread_shim.h`,
+  `src/thread_self_restrict_stub.c` (APRR, reports unsupported).
+- libplatform has no Xcode project in the 13.5 tag: `build-libplatform.sh` compiles `src/` directly.
+- C++ projects need `CXXSTD=1` (libc++ headers before the C library headers).
+
 ## 6. Known risks to check early
 
 - 16K user pages on a 4K kernel: real dyld and libSystem are still untested (README); dyld maps with 16K segments.
