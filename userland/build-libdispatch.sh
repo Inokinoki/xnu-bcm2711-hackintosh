@@ -12,7 +12,7 @@ OUT=$(cd "$3" && pwd)
 SDK=$(xcrun --sdk macosx --show-sdk-path)
 
 "$HERE/patch-libdispatch.sh" "$SRC/libdispatch"
-"$HERE/build-xcode-lib.sh" "$DXB" "$SRC" "$OUT" libdispatch libdispatch_mp_static \
+"$HERE/build-xcode-lib.sh" "$DXB" "$SRC" "$OUT" libdispatch "libdispatch mp static" \
 	CLANG_CXX_LANGUAGE_STANDARD=gnu++17 GCC_ENABLE_CPP_EXCEPTIONS=NO
 
 echo "== archives the target produced"
