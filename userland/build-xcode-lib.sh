@@ -14,6 +14,15 @@ TARGET=${5:?}
 shift 5
 . "$HERE/lib-env.sh"
 
+# LIB_EXTRA_SRC: a C file of stand-ins for symbols the closed parts of macOS provide, linked into the library
+EXTRA_LD=
+if [ -n "${LIB_EXTRA_SRC:-}" ]; then
+	mkdir -p "$DXB/build/extra"
+	extra_obj=$DXB/build/extra/$PROJECT-$(basename "$LIB_EXTRA_SRC").o
+	xcrun clang -target arm64-apple-macos13.0 $CPU_FLAGS -Os -isysroot "$SDK" -c "$LIB_EXTRA_SRC" -o "$extra_obj"
+	EXTRA_LD=$extra_obj
+fi
+
 strip_bsd_xcconfig "$SRC/$PROJECT"
 cd "$SRC/$PROJECT"
 HDRS=
@@ -22,6 +31,7 @@ env LD="$(xcrun -find clang)" LDPLUSPLUS="$(xcrun -find clang++)" \
 	xcodebuild install -sdk macosx -target "$TARGET" \
 	ARCHS=arm64 VALID_ARCHS=arm64 ONLY_ACTIVE_ARCH=NO \
 	MACOSX_DEPLOYMENT_TARGET=13.0 CODE_SIGN_IDENTITY=- GCC_TREAT_WARNINGS_AS_ERRORS=NO \
+	OTHER_LDFLAGS="\$(inherited) $EXTRA_LD" \
 	SUPPORTS_TEXT_BASED_API=NO BUILD_VARIANTS=normal \
 	OTHER_CFLAGS="\$(inherited) $CPU_FLAGS $COMPAT_FLAGS ${LIB_EXTRA_CFLAGS:-} \"$BRIDGEOS_DEF\" $BRIDGEOS_UNAVAIL" \
 	HEADER_SEARCH_PATHS="\$(inherited)" \

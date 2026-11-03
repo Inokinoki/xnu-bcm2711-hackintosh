@@ -71,6 +71,7 @@ jobs:
         continue-on-error: true
         env:
           LIB_EXTRA_CFLAGS: -include ${{ github.workspace }}/userland/include/pthread_shim.h
+          LIB_EXTRA_SRC: ${{ github.workspace }}/userland/src/thread_self_restrict_stub.c
         run: userland/build-xcode-lib.sh build/userland/dxb build/userland/src build/userland/root libpthread libsystem_pthread
 
       - name: libsystem_blocks
