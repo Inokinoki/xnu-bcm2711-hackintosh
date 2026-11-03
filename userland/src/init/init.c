@@ -22,6 +22,25 @@
 
 static volatile sig_atomic_t want_reboot, want_halt;
 
+/* Marks on the console before anything else, so a crash during start-up can be placed: libSystem has been
+ * initialized once this runs, and main has been reached once the next one prints. */
+static void
+mark(const char *msg)
+{
+	int fd = open("/dev/console", O_WRONLY);
+
+	if (fd >= 0) {
+		write(fd, msg, strlen(msg));
+		close(fd);
+	}
+}
+
+__attribute__((constructor)) static void
+early(void)
+{
+	mark("init: constructor (libSystem is initialized)\n");
+}
+
 static void
 on_usr1(int sig)
 {
@@ -97,6 +116,7 @@ main(void)
 	char *const rc_argv[] = { "sh", "/etc/rc", NULL };
 	char *const sh_argv[] = { "-sh", NULL };
 
+	mark("init: main reached\n");
 	open_console();
 	setenv("PATH", "/bin:/sbin:/usr/bin:/usr/sbin", 1);
 	signal(SIGUSR1, on_usr1);

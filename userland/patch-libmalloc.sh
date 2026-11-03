@@ -9,3 +9,17 @@ F=${1:?usage: $0 LIBMALLOC_SRCDIR}/src/nano_zone.h
 grep -q 'defined(__x86_64) || defined(__arm64__)' "$F" ||
 	sed -i '' 's|^#if defined(__x86_64)$|#if defined(__x86_64) \|\| defined(__arm64__)|' "$F"
 grep -q 'defined(__x86_64) || defined(__arm64__)' "$F"
+
+# Nano v2 reserves its regions from 0x600000000000 up; the 4K-page kernel here gives user processes a smaller
+# address space (the first boot died on a translation fault at 0x6000026fbe98). Use the scalable zone only.
+P=${1}/src/platform.h
+grep -q '^#define CONFIG_NANOZONE 0$' "$P" || {
+	python3 -I - "$P" <<'PY'
+import sys
+p = sys.argv[1]
+s = open(p).read()
+old = "#if MALLOC_TARGET_64BIT\n#define CONFIG_NANOZONE 1\n"
+assert s.count(old) == 1
+open(p, "w").write(s.replace(old, "#if MALLOC_TARGET_64BIT\n#define CONFIG_NANOZONE 0 /* userland/patch-libmalloc.sh */\n"))
+PY
+}
