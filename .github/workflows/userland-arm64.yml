@@ -261,9 +261,10 @@ jobs:
         run: userland/build-commands.sh build/userland/dxb build/userland/src build/userland/root text_cmds cat sed wc head tail sort tr cut
 
       - name: Undefined symbols and missing libraries (tools/macho_undef.py)
+        id: undef
         if: always()
         continue-on-error: true
-        run: python3 -I tools/macho_undef.py build/userland/root
+        run: python3 -I tools/macho_undef.py build/userland/root --fail
 
       - name: Gate on the whole root
         if: always()

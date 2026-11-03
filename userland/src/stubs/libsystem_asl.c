@@ -1,16 +1,38 @@
 /*
  * libsystem_asl is closed. Libc's syslog is implemented there (the $DARWIN_EXTSN variants are what the SDK headers
  * bind to): messages go to the console of the calling process's stderr when it is a terminal-less daemon is not
- * worth the trouble, so they are dropped. openlog/setlogmask keep their state-free contract.
+ * worth the trouble, so they are dropped unless OS_LOG_STDERR is set. openlog/setlogmask keep their state-free contract.
  */
 #include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+/* With OS_LOG_STDERR set in the environment, syslog lines go to stderr so a failing first boot can be read */
+static void
+emit(int priority, const char *message, va_list args)
+{
+	char buf[1024];
+	int n;
+
+	if (!getenv("OS_LOG_STDERR")) {
+		return;
+	}
+	n = snprintf(buf, sizeof(buf), "<%d> ", priority);
+	n += vsnprintf(buf + n, sizeof(buf) - (size_t)n - 1, message, args);
+	if (n > (int)sizeof(buf) - 2) {
+		n = (int)sizeof(buf) - 2;
+	}
+	buf[n++] = '\n';
+	write(2, buf, (size_t)n);
+}
 
 void syslog_ext(int priority, const char *message, ...) __asm("_syslog$DARWIN_EXTSN");
 void vsyslog_ext(int priority, const char *message, va_list args) __asm("_vsyslog$DARWIN_EXTSN");
-void syslog(int priority, const char *message, ...) { (void)priority; (void)message; }
-void vsyslog(int priority, const char *message, va_list args) { (void)priority; (void)message; (void)args; }
-void syslog_ext(int priority, const char *message, ...) { (void)priority; (void)message; }
-void vsyslog_ext(int priority, const char *message, va_list args) { (void)priority; (void)message; (void)args; }
+void vsyslog(int priority, const char *message, va_list args) { emit(priority, message, args); }
+void vsyslog_ext(int priority, const char *message, va_list args) { emit(priority, message, args); }
+void syslog(int priority, const char *message, ...) { va_list ap; va_start(ap, message); emit(priority, message, ap); va_end(ap); }
+void syslog_ext(int priority, const char *message, ...) { va_list ap; va_start(ap, message); emit(priority, message, ap); va_end(ap); }
 void openlog(const char *ident, int logopt, int facility) { (void)ident; (void)logopt; (void)facility; }
 void closelog(void) { }
 

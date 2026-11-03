@@ -159,3 +159,23 @@ What the build needed (all in `userland/`, reuse it for the next libraries):
 - `mach_absolute_time` reads the counter at EL0 and the commpage; confirm `CNTKCTL_EL1` and the commpage fields libplatform uses.
 - The kernel does not set up the shared region for a cacheless dyld the way macOS does; check `DYLD_SHARED_REGION=avoid`
   handling and the `apple[]` strings the kernel passes.
+
+## 5b. Stand-ins: what each one is, and what is left
+
+`tools/macho_undef.py ROOT --fail` (CI step "Undefined symbols and missing libraries") checks that every non-weak
+undefined symbol of every Mach-O in the root is exported by the library it is bound to (two-level namespace, re-exports
+followed) and that every library an image names exists. It found the libraries dyld would have failed to load
+(libmacho, libcorecrypto, libsystem_featureflags, libsystem_dnssd, libquarantine, libsystem_collections, libsystem_darwin,
+libunwind, libobjc, libncurses) and the symbols libSystem imports from them; the root now has no unresolved symbol.
+New work comes from this report, not from guessing.
+
+| Library | State | Notes |
+|---|---|---|
+| libmacho, libsystem_collections, libc `fenv` (libm_extra.c) | real | libmacho written from loader.h; collections from Libc |
+| libcommonCrypto | partial | SHA-256 only (checked against sha256sum); MD5/SHA-1/SHA-512: reuse BearSSL (kernel patches 0025-0029) |
+| libsystem_trace, libsystem_asl | no-op | with `OS_LOG_STDERR=1` in the environment the messages go to stderr |
+| libxpc, liblaunch (`bootstrap_*`, `vproc_swap_integer`) | failing | bootstrap look-ups fail until init is a bootstrap server |
+| libsystem_darwin (`os_variant_*`), libsystem_featureflags, libcorecrypto, libsystem_dnssd, libquarantine | constant / empty | correct for this system (not an internal build, no flags, no quarantine); libraries only have to exist |
+| libncurses.5.4 | termcap stub | `tgetent` fails; real ncurses-61 when a command needs curses |
+| Libinfo membership, ds, mdns modules | ENOENT / unavailable | files-only lookups; DNS needs a resolver module (stage F) |
+| libobjc | none | Blocks is built with `HAVE_OBJC=0`, libdispatch with `HAVE_OBJC 0` |
