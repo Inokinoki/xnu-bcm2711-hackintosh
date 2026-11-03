@@ -34,7 +34,7 @@ if [ -n "${LIBSYSTEM_DXB:-}" ] && [ -n "${LIBSYSTEM_SRC:-}" ]; then
 	done
 	INIT_OBJ=$DXB/build/libsystem_init.o
 	# shellcheck disable=SC2086
-	xcrun clang -target arm64-apple-macos13.0 $CPU_FLAGS -Os -isysroot "$SDK" -w $BRIDGEOS_DEF $BRIDGEOS_UNAVAIL $COMPAT_FLAGS \
+	xcrun clang -target arm64-apple-macos13.0 $CPU_FLAGS -Os -isysroot "$SDK" -w $BRIDGEOS_DEF $BRIDGEOS_UNAVAIL $COMPAT_FLAGS -include "$HERE/include/dyld_version_shim.h" \
 		$SYSINC -c "$SRC/Libsystem/init.c" -o "$INIT_OBJ"
 fi
 
