@@ -10,6 +10,10 @@
 #include <stdint.h>
 #include <string.h>
 
+#define CCSHA1_OUTPUT_SIZE 20
+#define CCSHA256_OUTPUT_SIZE 32
+#define CCSHA384_OUTPUT_SIZE 48
+
 struct ccdigest_info {
 	size_t output_size;
 	size_t state_size;
