@@ -17,7 +17,7 @@ SDK=$(xcrun --sdk macosx --show-sdk-path)
 
 echo "== archives the target produced"
 find "$OUT" "$DXB/build" -name 'libdispatch*.a' | sort
-A=$(find "$OUT/usr/local/lib" -name 'libdispatch.a' | head -1)
+A=$(find "$OUT/usr/local/lib" -name 'lib*dispatch.a' | head -1)
 test -f "$A"
 
 xcrun clang -target arm64-apple-macos13.0 -mcpu=cortex-a72 -Os -isysroot "$SDK" -c "$HERE/src/libdispatch_stubs.c" -o "$DXB/build/libdispatch_stubs.o"
