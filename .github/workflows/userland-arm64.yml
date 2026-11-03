@@ -11,6 +11,9 @@ on:
     paths:
       - "userland/**"
       - "tools/check-arm64-plain.sh"
+      - "tools/macho_undef.py"
+      - "tools/mkroot.sh"
+      - "tools/pi4-qemu-boot.sh"
       - ".github/workflows/userland-arm64.yml"
 
 concurrency:
@@ -286,3 +289,67 @@ jobs:
           path: build/userland/root/
           if-no-files-found: error
           retention-days: 14
+
+  # Boot the userland root on QEMU raspi4b with the latest kernel of the kernel workflow (a RAM disk root).
+  boot:
+    needs: build
+    runs-on: macos-14
+    timeout-minutes: 40
+    permissions:
+      actions: read
+      contents: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: userland-arm64-root
+          path: build/root
+
+      - name: Tools
+        run: |
+          brew install qemu aarch64-elf-gcc coreutils
+          qemu-system-aarch64 --version | head -1
+
+      - name: Kernel from the kernel workflow
+        run: |
+          id=$(gh run list --workflow xnu-8796.141.3-bcm2711.yml --status success --limit 1 --json databaseId --jq '.[0].databaseId')
+          echo "kernel from run $id"
+          gh run download "$id" -n xnu-8796.141.3-bcm2711-kernel -D build/kernel
+          ls -l build/kernel | head
+
+      - name: HFS+ root image
+        run: |
+          chmod -R u+rwX build/root
+          tools/mkroot.sh build/root build/root.img
+
+      - name: Boot on QEMU raspi4b
+        id: boot
+        continue-on-error: true
+        run: |
+          export PATH="$(brew --prefix coreutils)/libexec/gnubin:$PATH"
+          kernel=$(find build/kernel -maxdepth 1 -type f -name 'kernel.development.bcm2837' | head -1)
+          RAMDISK=build/root.img MEM=2G CC=aarch64-elf-gcc OUT=$PWD/build/qemu tools/pi4-qemu-boot.sh "$kernel" 420
+
+      - name: Console log
+        if: always()
+        run: |
+          tail -n 120 build/qemu/uart1.log || true
+          echo "----- markers"
+          grep -E "init: process 1|rc: |USERLAND-SELFTEST-OK|panic|dyld|Library not loaded|Symbol not found" build/qemu/uart1.log | head -60 || true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: qemu-boot-log
+          path: |
+            build/qemu/uart1.log
+            build/qemu/qemu.log
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Boot result
+        run: |
+          grep -q "USERLAND-SELFTEST-OK" build/qemu/uart1.log

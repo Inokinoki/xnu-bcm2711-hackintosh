@@ -1,0 +1,15 @@
+# Run by /sbin/launchd (userland/src/init/init.c) before it starts the interactive shell. The selftest below
+# prints markers on the console that the QEMU boot job in CI looks for.
+export OS_LOG_STDERR=1
+echo "rc: start"
+echo "rc: shell is $0, bash $BASH_VERSION"
+uname -a
+id
+echo "rc: arithmetic $((6 * 7))"
+echo hello | cat | wc -c
+ls -l /
+ls /usr/lib
+echo "rc: file tests"
+echo data > /tmp/selftest && cp /tmp/selftest /tmp/selftest2 && cat /tmp/selftest2 && rm /tmp/selftest /tmp/selftest2
+sort /etc/passwd | head -2
+echo "rc: done USERLAND-SELFTEST-OK"
