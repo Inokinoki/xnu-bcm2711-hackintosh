@@ -19,4 +19,11 @@ typedef struct os_log_pack_s {
 	uint8_t olp_data[0];
 } os_log_pack_s, *os_log_pack_t;
 
+#define OS_LOG_F_SEND 0x01
+#define OS_LOG_F_COMPOSE 0x02
+
+/* libtrace; our libsystem_trace stand-in provides it (formats into buf, sends nothing) */
+extern char *os_log_send_and_compose(uint32_t flags, const char **fmt_out, char *buf, size_t buf_size,
+		os_log_t log, os_log_type_t type, const char *fmt, ...);
+
 #endif /* __OS_LOG_PRIVATE_H__ */
