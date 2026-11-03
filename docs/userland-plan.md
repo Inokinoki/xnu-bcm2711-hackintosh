@@ -124,8 +124,14 @@ libunwind has the PAC authenticate hints patched out) and the `libSystem.B.dylib
 re-exports the libraries above), plus `libsystem_info` (Libinfo with the OpenDirectory and mDNSResponder modules replaced by
 stand-ins in `userland/src/libinfo/`: files-only lookups), `libsystem_notify` (client library only), `libsystem_m` (openlibm;
 the long double entry points are the double ones) and a `libxpc` stand-in (bootstrap look-ups fail, xpc objects are no-ops).
-Not run on QEMU yet.
-Next, in order: the remaining closed-library stubs (asl, featureflags, sandbox, corecrypto, macho ... the umbrella grows
+Stand-ins also for `libsystem_asl` (syslog family) and `libcommonCrypto` (SHA-256 only, checked against sha256sum), and
+`libcopyfile`, `libremovefile`, `libutil` are built from source.
+Programs (all plain arm64, linked against our libSystem): `/sbin/launchd` (our minimal PID 1, `userland/src/init/init.c`:
+console, `/etc/rc`, a respawning `/bin/sh`), `bash` 3.2, shell_cmds (echo test sleep env kill pwd true false uname hostname id
+date printenv basename dirname which), file_cmds (ls cp mv rm mkdir rmdir ln chmod touch df stat dd), text_cmds (cat sed wc
+head tail sort tr cut). `grep` is missing: it needs liblzma. Not run on QEMU yet.
+Next, in order: a trimmed root (no dSYM, headers or static libraries; symlinks such as `libc++.dylib` need the HFS root tool
+to support them), `/etc` files, QEMU boot of `/sbin/launchd` and `sh`; then the remaining closed-library stubs (asl, featureflags, sandbox, corecrypto, macho ... the umbrella grows
 with them), then init/launchd (a real bootstrap server replaces the libxpc stand-in) and the commands.
 
 What the build needed (all in `userland/`, reuse it for the next libraries):
