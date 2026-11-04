@@ -20,6 +20,7 @@ echo "rc: sort"
 wc -l /etc/passwd
 t() { echo "rc: sort [$*]"; "$@" < /etc/passwd > /tmp/sortout; echo "rc: exit $? bytes $(wc -c < /tmp/sortout)"; }
 semtest; echo "rc: semtest exit $?"
+SORT_DEBUG=1 t sort
 t sort
 t sort -k1
 t sort -k1,1 -t:

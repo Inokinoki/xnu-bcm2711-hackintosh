@@ -5,11 +5,12 @@
 #   userland/patch-sort.sh SRCDIR/text_cmds
 set -eu
 F="${1:?usage: $0 TEXT_CMDS_DIR}/sort/sort.c"
-grep -q 'userland/patch-sort.sh' "$F" && exit 0
 python3 - "$F" <<'PY'
 import sys
 p = sys.argv[1]
 s = open(p).read()
+if "userland/patch-sort.sh" in s:
+    sys.exit(0)
 old = "\tclear_tmp_files();\n\texit(-1);\n}"
 new = '''\t/* userland/patch-sort.sh */
 	{
@@ -41,5 +42,31 @@ s = s.replace(old, new, 1)
 s = s.replace("sig_handler(int sig __unused, siginfo_t *siginfo __unused,\n    void *context __unused)", "sig_handler(int sig, siginfo_t *siginfo, void *context)", 1)
 s = s.replace("#include <err.h>", "#include <err.h>\n#include <dlfcn.h>\n#include <sys/ucontext.h>", 1)
 assert "<dlfcn.h>" in s
+open(p, "w").write(s)
+PY
+
+# sort_list_add: print what the allocation looks like (layout debugging, see docs/userland-plan.md)
+G="${1}/sort/file.c"
+python3 - "$G" <<'PY'
+import sys
+p = sys.argv[1]
+s = open(p).read()
+if "userland/patch-sort.sh" in s:
+    sys.exit(0)
+old = "\t\tl->list[indx] = sort_list_item_alloc();\n\t\tsort_list_item_set(l->list[indx], str);\n"
+new = old + """\t\t/* userland/patch-sort.sh */
+\t\tif (getenv("SORT_DEBUG")) {
+\t\t\tstruct sort_list_item *it = l->list[indx];
+\t\t\tdprintf(2, "sort_list_add: indx %zu list %p item %p str %p ka %p keys_num %zu keys_array_size %zu need_hint %d "
+\t\t\t    "sizeof(item) %zu sizeof(key_value) %zu sizeof(key_hint) %zu k0 %p len %zu\\n",
+\t\t\t    indx, (void *)l->list, (void *)it, (void *)str, (void *)&it->ka, keys_num, keys_array_size(),
+\t\t\t    (int)need_hint, sizeof(struct sort_list_item), sizeof(struct key_value), sizeof(struct key_hint),
+\t\t\t    (void *)get_key_from_keys_array(&it->ka, 0)->k, str->len);
+\t\t}
+"""
+assert old in s
+s = s.replace(old, new, 1)
+if "extern bool need_hint" not in s:
+    s = s.replace('#include "file.h"', '#include "file.h"\nextern bool need_hint;', 1)
 open(p, "w").write(s)
 PY
