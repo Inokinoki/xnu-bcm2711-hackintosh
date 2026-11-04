@@ -18,7 +18,13 @@ id -un
 ls -ld /var/root /etc/passwd
 echo "rc: sort"
 wc -l /etc/passwd
-sort /etc/passwd; echo "rc: sort exit $?"
-sort < /etc/passwd | head -2; echo "rc: sort stdin exit $?"
-cat /etc/passwd | sort | head -2; echo "rc: sort pipe exit $?"
+t() { echo "rc: sort [$*]"; "$@" < /etc/passwd > /tmp/sortout; echo "rc: exit $? bytes $(wc -c < /tmp/sortout)"; }
+t sort
+LC_ALL=C t sort
+t sort --parallel=1
+t sort -S 4m
+t sort -s
+t sort -r
+sort -o /tmp/sortout2 /etc/passwd; echo "rc: sort -o exit $? bytes $(wc -c < /tmp/sortout2)"
+echo b | sort; echo "rc: tiny sort exit $?"
 echo "rc: done USERLAND-SELFTEST-OK"
