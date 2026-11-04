@@ -262,7 +262,9 @@ jobs:
       - name: text_cmds
         id: text_cmds
         continue-on-error: true
-        run: userland/build-commands.sh build/userland/dxb build/userland/src build/userland/root text_cmds cat sed wc head tail sort tr cut
+        run: |
+          userland/patch-sort.sh build/userland/src/text_cmds
+          userland/build-commands.sh build/userland/dxb build/userland/src build/userland/root text_cmds cat sed wc head tail sort tr cut
 
       - name: Undefined symbols and missing libraries (tools/macho_undef.py)
         id: undef
