@@ -94,7 +94,7 @@ run:
 
 	mov	x16, #SYS_fork
 	svc	#0x80
-	cbz	x1, child		/* x1 = 1 in the child, 0 in the parent */
+	cbnz	x1, child		/* x1 = 1 in the child, 0 in the parent */
 
 	/* parent: x0 = child pid; wait4(pid, &status, 0, NULL) */
 	str	wzr, [sp, #32]
