@@ -6,6 +6,11 @@ name: userland-boot
 
 on:
   workflow_dispatch:
+    inputs:
+      spawn:
+        description: "debug: static PID 1 that runs smoke and the real init as children with DYLD_PRINT_* set"
+        type: boolean
+        default: false
   workflow_run:
     workflows: [userland-arm64]
     types: [completed]
@@ -55,9 +60,13 @@ jobs:
       - name: HFS+ root image
         run: |
           chmod -R u+rwX build/root
-          # debugging PID 1: a static program that runs smoke and the real init as children with DYLD_PRINT_* set
-          SRC=pi-spawn.S CC=aarch64-elf-gcc OBJCOPY=aarch64-elf-objcopy tools/mkpi-init.sh build/spawn-init
-          MKROOT_SPAWN_INIT=$PWD/build/spawn-init tools/mkroot.sh build/root build/root.img
+          # normally the real init is PID 1; with the spawn input a static debugging PID 1 runs smoke and the real init as children
+          if [ "${{ inputs.spawn }}" = true ]; then
+            SRC=pi-spawn.S CC=aarch64-elf-gcc OBJCOPY=aarch64-elf-objcopy tools/mkpi-init.sh build/spawn-init
+            MKROOT_SPAWN_INIT=$PWD/build/spawn-init tools/mkroot.sh build/root build/root.img
+          else
+            tools/mkroot.sh build/root build/root.img
+          fi
 
       - name: Boot on QEMU raspi4b
         id: boot

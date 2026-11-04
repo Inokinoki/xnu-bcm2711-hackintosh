@@ -9,12 +9,15 @@
  * It never exits: the kernel panics when process 1 does. SIGUSR1 reboots, SIGUSR2 halts.
  */
 #include <errno.h>
+#include <stdint.h>
 #include <fcntl.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
+#include <sys/mount.h>
+#include <sys/time.h>
 #include <sys/reboot.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
@@ -53,6 +56,36 @@ on_usr2(int sig)
 {
 	(void)sig;
 	want_halt = 1;
+}
+
+/* The kernel mounts the RAM disk root read-only; like launchd on macOS, remount it read-write (mount -uw /). */
+static void
+remount_root_rw(void)
+{
+	struct {
+		char *fspec;
+		uid_t hfs_uid;
+		gid_t hfs_gid;
+		mode_t hfs_mask;
+		uint32_t hfs_encoding;
+		struct timezone hfs_timezone;
+		int flags;
+		int journal_tbuffer_size;
+		int journal_flags;
+		int journal_disable;
+	} args;
+
+	memset(&args, 0, sizeof(args));
+	args.fspec = "/dev/md0";
+	args.hfs_uid = (uid_t)-1;
+	args.hfs_gid = (gid_t)-1;
+	args.hfs_mask = (mode_t)-1;
+	args.hfs_encoding = (uint32_t)-1;
+	if (mount("hfs", "/", MNT_UPDATE, &args) == 0) {
+		printf("init: / is read-write\n");
+	} else {
+		printf("init: remounting / read-write failed: %s\n", strerror(errno));
+	}
 }
 
 static void
@@ -126,6 +159,7 @@ main(void)
 
 	printf("\ninit: process 1 (pid %d) is up\n", getpid());
 
+	remount_root_rw();
 	if (stat("/etc/rc", &st) == 0 && stat("/bin/sh", &st) == 0) {
 		printf("init: running /etc/rc\n");
 		wait_for(spawn("/bin/sh", rc_argv));
