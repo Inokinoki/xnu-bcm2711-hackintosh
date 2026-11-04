@@ -21,11 +21,15 @@ wc -l /etc/passwd
 t() { echo "rc: sort [$*]"; "$@" < /etc/passwd > /tmp/sortout; echo "rc: exit $? bytes $(wc -c < /tmp/sortout)"; }
 semtest; echo "rc: semtest exit $?"
 t sort
-LC_ALL=C t sort
-t sort --parallel=1
-t sort -S 4m
-t sort -s
-t sort -r
+t sort -k1
+t sort -k1,1 -t:
+t sort -n
+t sort -u
+t sort -m
+t sort -c
+t sort -b
+t sort -f
+t sort -d
 sort -o /tmp/sortout2 /etc/passwd; echo "rc: sort -o exit $? bytes $(wc -c < /tmp/sortout2)"
 echo b | sort; echo "rc: tiny sort exit $?"
 echo "rc: done USERLAND-SELFTEST-OK"
