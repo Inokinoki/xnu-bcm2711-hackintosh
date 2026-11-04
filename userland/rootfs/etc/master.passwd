@@ -1,6 +1,6 @@
 ##
-# User Database
+# User Database (master.passwd: name:passwd:uid:gid:class:change:expire:gecos:dir:shell)
 ##
-nobody:*:-2:-2:Unprivileged User:/var/empty:/usr/bin/false
-root:*:0:0:System Administrator:/var/root:/bin/sh
-daemon:*:1:1:System Services:/var/root:/usr/bin/false
+nobody:*:-2:-2::0:0:Unprivileged User:/var/empty:/usr/bin/false
+root:*:0:0::0:0:System Administrator:/var/root:/bin/sh
+daemon:*:1:1::0:0:System Services:/var/root:/usr/bin/false

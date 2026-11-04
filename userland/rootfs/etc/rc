@@ -1,6 +1,7 @@
 # Run by /sbin/launchd (userland/src/init/init.c) before it starts the interactive shell. The selftest below
 # prints markers on the console that the QEMU boot job in CI looks for.
 export OS_LOG_STDERR=1
+hostname macpi
 echo "rc: start"
 echo "rc: shell is $0, bash $BASH_VERSION"
 uname -a
@@ -11,5 +12,13 @@ ls -l /
 ls /usr/lib
 echo "rc: file tests"
 echo data > /tmp/selftest && cp /tmp/selftest /tmp/selftest2 && cat /tmp/selftest2 && rm /tmp/selftest /tmp/selftest2
-sort /etc/passwd | head -2
+echo "rc: user lookup"
+id root
+id -un
+ls -ld /var/root /etc/passwd
+echo "rc: sort"
+wc -l /etc/passwd
+sort /etc/passwd; echo "rc: sort exit $?"
+sort < /etc/passwd | head -2; echo "rc: sort stdin exit $?"
+cat /etc/passwd | sort | head -2; echo "rc: sort pipe exit $?"
 echo "rc: done USERLAND-SELFTEST-OK"
