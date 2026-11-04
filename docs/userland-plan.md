@@ -179,3 +179,21 @@ New work comes from this report, not from guessing.
 | libncurses.5.4 | termcap stub | `tgetent` fails; real ncurses-61 when a command needs curses |
 | Libinfo membership, ds, mdns modules | ENOENT / unavailable | files-only lookups; DNS needs a resolver module (stage F) |
 | libobjc | none | Blocks is built with `HAVE_OBJC=0`, libdispatch with `HAVE_OBJC 0` |
+
+## 5c. First boots on QEMU (workflow `userland-boot`, macos-14, QEMU 11, RAM disk root)
+
+`tools/mkroot.sh` (hdiutil, macOS only) turns the CI root into a raw HFS+ image; `tools/pi4-qemu-boot.sh` boots it with the
+kernel of the kernel workflow; `-d int` output is filtered into `el0-exceptions.log` (every exception from EL0 with ESR, FAR,
+ELR). Results so far:
+
+- The kernel mounts the image and execs `/sbin/launchd`; dyld starts, maps the libraries and runs initializers.
+- PID 1 dies with SIGSEGV (`exit reason namespace 2 subcode 0xb`) before its constructor prints anything: a data abort,
+  translation fault level 0, FAR `0x6000...` (a wild pointer, outside a 39-bit user address space), in code right after a run of
+  heap-growth faults. Not malloc's nano zone (disabled now, same fault), and not the missing libSystem initializer (added:
+  Apple's `Libsystem/init.c` is linked into libSystem.B.dylib; it did change the point of the crash).
+- To place the crash without a debugger, `tools/pi-spawn.S` is a static PID 1 that runs `/usr/bin/smoke` and then the real init
+  (`/sbin/init-real`) as children with `DYLD_PRINT_LIBRARIES/INITIALIZERS/SEGMENTS=1` and the console as stderr, and prints how
+  they ended. It has not run yet: the CI run was refused (GitHub Actions billing / spending limit on the account).
+
+Next: run it (`gh workflow run userland-boot.yml`), read the dyld log to see the last initializer that started, symbolize
+the faulting address from the image's segment addresses, fix, repeat.
