@@ -18,6 +18,12 @@ rsync -a "$HERE/userland/rootfs"/ "$STAGE"/
 mkdir -p "$STAGE"/dev "$STAGE"/tmp "$STAGE"/var/root "$STAGE"/var/empty "$STAGE"/var/tmp "$STAGE"/private "$STAGE"/sbin "$STAGE"/bin
 chmod 1777 "$STAGE"/tmp "$STAGE"/var/tmp
 ln -sf bash "$STAGE"/bin/sh
+# MKROOT_SPAWN_INIT=file: a static debugging PID 1 (tools/pi-spawn.S) that runs smoke and the real init as children
+if [ -n "${MKROOT_SPAWN_INIT:-}" ]; then
+	mv "$STAGE"/sbin/launchd "$STAGE"/sbin/init-real
+	cp "$MKROOT_SPAWN_INIT" "$STAGE"/sbin/launchd
+	chmod 755 "$STAGE"/sbin/launchd
+fi
 find "$STAGE" -name .DS_Store -delete
 
 used=$(du -sm "$STAGE" | cut -f1)

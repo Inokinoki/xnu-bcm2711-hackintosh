@@ -15,6 +15,8 @@ on:
       - "tools/mkroot.sh"
       - "tools/pi4-qemu-boot.sh"
       - "tools/mkpi_payload.py"
+      - "tools/pi-spawn.S"
+      - "tools/mkpi-init.sh"
       - "userland/rootfs/**"
       - ".github/workflows/userland-boot.yml"
 
@@ -53,7 +55,9 @@ jobs:
       - name: HFS+ root image
         run: |
           chmod -R u+rwX build/root
-          tools/mkroot.sh build/root build/root.img
+          # debugging PID 1: a static program that runs smoke and the real init as children with DYLD_PRINT_* set
+          SRC=pi-spawn.S CC=aarch64-elf-gcc OBJCOPY=aarch64-elf-objcopy tools/mkpi-init.sh build/spawn-init
+          MKROOT_SPAWN_INIT=$PWD/build/spawn-init tools/mkroot.sh build/root build/root.img
 
       - name: Boot on QEMU raspi4b
         id: boot
@@ -82,7 +86,7 @@ jobs:
         run: |
           tail -n 120 build/qemu/uart1.log || true
           echo "----- markers"
-          grep -E "init: process 1|rc: |USERLAND-SELFTEST-OK|panic|dyld|Library not loaded|Symbol not found" build/qemu/uart1.log | head -60 || true
+          grep -E "spawn:|init: |rc: |USERLAND-SELFTEST-OK|panic|dyld|Library not loaded|Symbol not found" build/qemu/uart1.log | head -60 || true
 
       - uses: actions/upload-artifact@v4
         if: always()
