@@ -19,6 +19,7 @@ ls -ld /var/root /etc/passwd
 echo "rc: sort"
 wc -l /etc/passwd
 t() { echo "rc: sort [$*]"; "$@" < /etc/passwd > /tmp/sortout; echo "rc: exit $? bytes $(wc -c < /tmp/sortout)"; }
+semtest; echo "rc: semtest exit $?"
 t sort
 LC_ALL=C t sort
 t sort --parallel=1
