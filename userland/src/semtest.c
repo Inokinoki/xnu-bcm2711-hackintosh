@@ -44,12 +44,12 @@ static void vm_range_probe(void)
 	printf("semtest: mmap(%p) -> %p\n", hi, r);
 	int rc = munmap(hi, len);
 	printf("semtest: munmap(%p) -> %d\n", hi, rc);
-	mach_vm_address_t a = (mach_vm_address_t)hi;
-	kern_return_t kr = mach_vm_deallocate(mach_task_self(), a, len);
+	vm_address_t a = (vm_address_t)hi;
+	kern_return_t kr = vm_deallocate(mach_task_self(), a, len);
 	printf("semtest: vm_deallocate -> %d\n", kr);
-	mach_vm_size_t sz = 0x4000;
-	a = (mach_vm_address_t)hi;
-	kr = mach_vm_allocate(mach_task_self(), &a, sz, VM_FLAGS_FIXED);
+	vm_size_t sz = 0x4000;
+	a = (vm_address_t)hi;
+	kr = vm_allocate(mach_task_self(), &a, sz, VM_FLAGS_FIXED);
 	printf("semtest: vm_allocate(fixed) -> %d\n", kr);
 	printf("semtest: vm range probe done\n");
 }
