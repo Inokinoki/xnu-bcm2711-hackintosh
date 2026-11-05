@@ -112,5 +112,8 @@ jobs:
           grep -q "USERLAND-SELFTEST-OK" build/qemu/uart1.log
           grep -q "rc: sort ok" build/qemu/uart1.log
           grep -q "rc: grep ok" build/qemu/uart1.log
+          grep -q "rc: dev null ok" build/qemu/uart1.log
+          grep -q "rc: dev zero ok" build/qemu/uart1.log
+          grep -q "rc: dev tty ok" build/qemu/uart1.log
           grep -q "semtest: vm range probe done" build/qemu/uart1.log
           grep -q "uid=0(root)" build/qemu/uart1.log

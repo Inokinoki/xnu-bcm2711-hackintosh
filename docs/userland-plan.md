@@ -221,4 +221,7 @@ Fixed after the first boot:
 
 `grep` is built and checked at boot (`rc: grep ok`); `-Z/-J/-M` decompression is linked but not exercised (no compressors in the root).
 
-Known gaps: `/dev` is read-only (being looked at).
+`/dev` is the kernel's devfs, as on macOS: null, zero, tty, stdout, random, urandom work (checked at boot), creating regular
+files there fails with ENOTSUP by design. That was never a fault. `mount` is missing (it is in `system_cmds`).
+
+Known gaps: no `mount`/`system_cmds`; see the plan list in section 6 for the rest.

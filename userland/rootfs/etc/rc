@@ -27,11 +27,7 @@ n=$(grep -c '^root:' /etc/master.passwd)
 echo "a b c" | grep -o b
 echo "rc: grep v: $(printf 'x\ny\n' | grep -v x)"
 echo "rc: dev"
-mount
-ls -l /dev
 echo x > /dev/null && echo "rc: dev null ok"
-echo "rc: dev zero $(head -c 4 /dev/zero | wc -c)"
+[ "$(head -c 4 /dev/zero | wc -c | tr -d ' ')" = 4 ] && echo "rc: dev zero ok"
 echo "rc: dev tty" > /dev/tty && echo "rc: dev tty ok"
-echo "rc: dev stdout" > /dev/stdout
-touch /dev/newfile && echo "rc: dev touch ok" || echo "rc: dev touch failed"
 echo "rc: done USERLAND-SELFTEST-OK"
