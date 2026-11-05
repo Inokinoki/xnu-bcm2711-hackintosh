@@ -12,7 +12,8 @@ grep -q 'defined(__x86_64) || defined(__arm64__)' "$F"
 
 # Nano v2 reserves its regions from 0x600000000000 up; the 4K-page kernel here gives user processes a smaller
 # address space (the first boot died on a translation fault at 0x6000026fbe98). Use the scalable zone only.
-# LIBMALLOC_NANO=1 keeps nano on: the kernel now refuses addresses past the user pmap (xnu patch 0042).
+# LIBMALLOC_NANO=1 keeps nano on. It boots (the kernel rejects the reservation, malloc falls back) but every process then prints
+# "nano zone abandoned due to inability to reserve vm space" on stderr, so the default stays off.
 P=${1}/src/platform.h
 [ "${LIBMALLOC_NANO:-0}" = 1 ] || grep -q 'userland/patch-libmalloc.sh' "$P" || {
 	python3 -I - "$P" <<'PY'

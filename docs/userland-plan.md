@@ -200,7 +200,9 @@ Fixed in the kernel (`xnu/patches-8796.141.3/0042`): the macOS-platform build ga
 4K-page user pmap covers 39 bits, so a `munmap` above 512 GiB reached `pmap_remove_options()` and panicked. The default
 vm_map maximum is now clamped to the pmap's end minus 256 MB. `semtest vm` (run from `/etc/rc`, checked by the boot job)
 probes 0x600000000000: `mmap(MAP_FIXED)` fails, `vm_allocate(FIXED)` returns KERN_INVALID_ADDRESS, `munmap` returns 0, no panic.
-libmalloc's nano zone is still disabled (`patch-libmalloc.sh`); re-enabling it is a separate check.
+With `LIBMALLOC_NANO=1` the nano zone was tried (boot run 42021731524): it fails to reserve, malloc falls back and everything
+passes, but each process prints "nano zone abandoned" on stderr, so `patch-libmalloc.sh` keeps nano off by default.
+Nano v2 itself can not work here: it needs 0x600000000000, past the 39-bit user pmap.
 
 Fixed after the first boot:
 
