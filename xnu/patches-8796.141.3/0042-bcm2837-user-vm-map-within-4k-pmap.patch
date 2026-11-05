@@ -1,0 +1,24 @@
+diff --git a/osfmk/arm/pmap/pmap.c b/osfmk/arm/pmap/pmap.c
+index fc2096f..bdaa0fd 100644
+--- a/osfmk/arm/pmap/pmap.c
++++ b/osfmk/arm/pmap/pmap.c
+@@ -480,7 +480,18 @@ _Static_assert((ARM64_MAX_OFFSET_DEVICE_LARGE > ARM64_MIN_MAX_ADDRESS) && (ARM64
+ _Static_assert((ARM64_MAX_OFFSET_DEVICE_SMALL > ARM64_MIN_MAX_ADDRESS) && (ARM64_MAX_OFFSET_DEVICE_SMALL <= MACH_VM_MAX_ADDRESS),
+     "Small device address space size outside allowable range");
+ 
+-#  ifdef XNU_TARGET_OS_OSX
++#  if defined(ARM64_BOARD_CONFIG_BCM2837)
++/*
++ * BCM2837/BCM2711 is built as a macOS platform (47-bit MACH_VM_MAX_ADDRESS) but runs 4K pages, where a
++ * user pmap covers only 64 - T0SZ_BOOT bits (39: 512 GiB). A vm_map that reaches past the pmap lets user
++ * space map or unmap addresses the pmap cannot hold (libmalloc's nano zone at 0x600000000000), and
++ * pmap_remove_options() panics on "invalid address range". Stop the map 256 MB below the pmap's end; the
++ * commpage (0xFFFFFC000) and the shared region (0x180000000..0x280000000) are well below that.
++ */
++#define BCM2837_PMAP_USER_END ((1ULL << (64 - T0SZ_BOOT)) - 0x10000000ULL)
++SECURITY_READ_ONLY_LATE(vm_map_offset_t) arm64_pmap_max_offset_default =
++    (BCM2837_PMAP_USER_END < MACH_VM_MAX_ADDRESS) ? BCM2837_PMAP_USER_END : MACH_VM_MAX_ADDRESS;
++#  elif defined(XNU_TARGET_OS_OSX)
+ SECURITY_READ_ONLY_LATE(vm_map_offset_t) arm64_pmap_max_offset_default = MACH_VM_MAX_ADDRESS;
+ #  else
+ SECURITY_READ_ONLY_LATE(vm_map_offset_t) arm64_pmap_max_offset_default = 0x0;

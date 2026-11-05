@@ -5,6 +5,8 @@
 #include <mach/mach.h>
 #include <mach/semaphore.h>
 #include <mach/task.h>
+#include <mach/vm_map.h>
+#include <sys/mman.h>
 #include <locale.h>
 #include <malloc/malloc.h>
 #include <stdio.h>
@@ -33,8 +35,30 @@ static void alloc_probe(void)
 	printf("semtest: %d of 64 pointers not 16-byte aligned\n", misaligned);
 }
 
-int main(void)
+/* Addresses past the user pmap (39 bits here) must fail with an error, not take the kernel down. */
+static void vm_range_probe(void)
 {
+	void *hi = (void *)0x600000000000ULL;	/* libmalloc nano v2's region */
+	size_t len = 0x10000000;
+	void *r = mmap(hi, len, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE | MAP_FIXED, -1, 0);
+	printf("semtest: mmap(%p) -> %p\n", hi, r);
+	int rc = munmap(hi, len);
+	printf("semtest: munmap(%p) -> %d\n", hi, rc);
+	mach_vm_address_t a = (mach_vm_address_t)hi;
+	kern_return_t kr = mach_vm_deallocate(mach_task_self(), a, len);
+	printf("semtest: vm_deallocate -> %d\n", kr);
+	mach_vm_size_t sz = 0x4000;
+	a = (mach_vm_address_t)hi;
+	kr = mach_vm_allocate(mach_task_self(), &a, sz, VM_FLAGS_FIXED);
+	printf("semtest: vm_allocate(fixed) -> %d\n", kr);
+	printf("semtest: vm range probe done\n");
+}
+
+int main(int argc, char **argv)
+{
+	vm_range_probe();
+	if (argc > 1 && !strcmp(argv[1], "vm"))
+		return 0;
 	alloc_probe();
 	semaphore_t s = 0;
 	kern_return_t kr;
