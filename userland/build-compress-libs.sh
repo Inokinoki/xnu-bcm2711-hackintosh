@@ -5,6 +5,7 @@
 #
 #   userland/build-compress-libs.sh DXBDIR SRCDIR OUTROOT WORKDIR
 set -eu
+HERE=$(cd "$(dirname "$0")" && pwd)
 DXB=$(cd "${1:?usage: $0 DXBDIR SRCDIR OUTROOT WORKDIR}" && pwd)
 SRC=$(cd "${2:?}" && pwd)
 mkdir -p "${3:?}" "${4:?}"
@@ -38,6 +39,7 @@ mkdir -p "$WORK/bz2"
 for f in blocksort bzlib compress crctable decompress huffman randtable; do
 	$CC -D_FILE_OFFSET_BITS=64 -I"$B" -c "$B/$f.c" -o "$WORK/bz2/$f.o"
 done
+$CC -I"$B" -c "$HERE/src/bz2_crc32_vec.c" -o "$WORK/bz2/crc32_vec.o"
 dylib bz2 /usr/lib/libbz2.1.0.dylib 1.0.0 1.0.8
 ln -sf libbz2.1.0.dylib "$OUT/usr/lib/libbz2.dylib"
 cp "$B/bzlib.h" "$INC/"
