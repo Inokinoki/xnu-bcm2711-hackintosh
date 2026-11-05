@@ -70,3 +70,26 @@ if "extern bool need_hint" not in s:
     s = s.replace('#include "file.h"', '#include "file.h"\nextern bool need_hint;', 1)
 open(p, "w").write(s)
 PY
+
+# sort_list_item_alloc: print the block malloc hands out for an item and its size class
+H="${1}/sort/coll.c"
+python3 - "$H" <<'PY'
+import sys
+p = sys.argv[1]
+s = open(p).read()
+if "userland/patch-sort.sh" in s:
+    sys.exit(0)
+old = "\tsi = sort_malloc(sz);\n\tmemset(si, 0, sz);\n"
+new = """\tsi = sort_malloc(sz);
+\t/* userland/patch-sort.sh */
+\tif (getenv("SORT_DEBUG"))
+\t\tdprintf(2, "sort_list_item_alloc: sz %zu -> %p (%% 16 = %lu) malloc_size %zu\\n", sz, (void *)si,
+\t\t    (unsigned long)si % 16, malloc_size(si));
+\tmemset(si, 0, sz);
+"""
+assert old in s
+s = s.replace(old, new, 1)
+s = s.replace("#include <stdlib.h>", "#include <stdlib.h>\n#include <malloc/malloc.h>", 1)
+assert "malloc/malloc.h" in s
+open(p, "w").write(s)
+PY
