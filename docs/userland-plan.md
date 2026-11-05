@@ -196,8 +196,11 @@ and munmap of that range panics the kernel in `pmap_remove_options`). The patch 
 `tools/pi-spawn.S`, a static PID 1 that runs `smoke` and the real init as children with `DYLD_PRINT_LIBRARIES/INITIALIZERS/
 SEGMENTS=1` (workflow input `spawn`), so a crash leaves the dyld log instead of a kernel panic.
 
-Kernel issue to fix properly (not worked around): a user `munmap` of a range outside the pmap's address space should
-return an error, not panic (`vm_map` max offset is larger than the pmap's).
+Fixed in the kernel (`xnu/patches-8796.141.3/0042`): the macOS-platform build gave user vm_maps a 47-bit maximum while the
+4K-page user pmap covers 39 bits, so a `munmap` above 512 GiB reached `pmap_remove_options()` and panicked. The default
+vm_map maximum is now clamped to the pmap's end minus 256 MB. `semtest vm` (run from `/etc/rc`, checked by the boot job)
+probes 0x600000000000: `mmap(MAP_FIXED)` fails, `vm_allocate(FIXED)` returns KERN_INVALID_ADDRESS, `munmap` returns 0, no panic.
+libmalloc's nano zone is still disabled (`patch-libmalloc.sh`); re-enabling it is a separate check.
 
 Fixed after the first boot:
 
