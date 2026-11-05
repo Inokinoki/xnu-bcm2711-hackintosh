@@ -6,13 +6,36 @@
 #include <mach/semaphore.h>
 #include <mach/task.h>
 #include <locale.h>
+#include <malloc/malloc.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <wchar.h>
 
+/* malloc alignment probe, run first so the heap is as fresh as sort's: sort's item blocks come back 12 mod 16 */
+static void *probe[64];
+static size_t probe_sz[64];
+
+static void alloc_probe(void)
+{
+	static const size_t pattern[] = { 11, 16, 24, 16, 32, 16, 61, 16, 16, 16, 48, 16, 8, 16, 100, 16 };
+	for (int i = 0; i < 64; i++) {
+		probe_sz[i] = pattern[i % 16];
+		probe[i] = malloc(probe_sz[i]);
+	}
+	int misaligned = 0;
+	for (int i = 0; i < 64; i++) {
+		if ((unsigned long)probe[i] % 16) misaligned++;
+		if (i < 24)
+			printf("semtest: malloc(%zu) = %p (%% 16 = %lu) size %zu\n", probe_sz[i], probe[i],
+			    (unsigned long)probe[i] % 16, malloc_size(probe[i]));
+	}
+	printf("semtest: %d of 64 pointers not 16-byte aligned\n", misaligned);
+}
+
 int main(void)
 {
+	alloc_probe();
 	semaphore_t s = 0;
 	kern_return_t kr;
 
