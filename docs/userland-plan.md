@@ -129,7 +129,9 @@ Stand-ins also for `libsystem_asl` (syslog family) and `libcommonCrypto` (SHA-25
 Programs (all plain arm64, linked against our libSystem): `/sbin/launchd` (our minimal PID 1, `userland/src/init/init.c`:
 console, `/etc/rc`, a respawning `/bin/sh`), `bash` 3.2, shell_cmds (echo test sleep env kill pwd true false uname hostname id
 date printenv basename dirname which), file_cmds (ls cp mv rm mkdir rmdir ln chmod touch df stat dd), text_cmds (cat sed wc
-head tail sort tr cut). `grep` is missing: it needs liblzma. Not run on QEMU yet.
+head tail sort tr cut grep). `grep` links `-lz -lbz2 -llzma`, built by `userland/build-compress-libs.sh`: zlib-83 and bzip2-45
+from Apple's sources (bzip2's PMULL `crc32_vec` assembly is replaced by `userland/src/bz2_crc32_vec.c`, the Cortex-A72 has no
+crypto extension) and upstream xz 5.4.6 (pinned by hash). All of this runs on QEMU (section 5c).
 Next, in order: a trimmed root (no dSYM, headers or static libraries; symlinks such as `libc++.dylib` need the HFS root tool
 to support them), `/etc` files, QEMU boot of `/sbin/launchd` and `sh`; then the remaining closed-library stubs (asl, featureflags, sandbox, corecrypto, macho ... the umbrella grows
 with them), then init/launchd (a real bootstrap server replaces the libxpc stand-in) and the commands.
@@ -217,4 +219,6 @@ Fixed after the first boot:
   `userland/patch-libplatform.sh` makes `bzero`, `__bzero` and `_platform_bzero` return their argument. Any other code
   that clang compiles the same way was affected too.
 
-Known gaps: `/dev` is read-only, `grep` is not built (liblzma).
+`grep` is built and checked at boot (`rc: grep ok`); `-Z/-J/-M` decompression is linked but not exercised (no compressors in the root).
+
+Known gaps: `/dev` is read-only (being looked at).
