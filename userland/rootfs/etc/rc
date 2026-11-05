@@ -22,7 +22,7 @@ first=$(sort /etc/passwd | head -1)
 [ "$first" = "# User Database" ] && echo "rc: sort ok" || echo "rc: sort FAILED: $first"
 echo b > /tmp/s1 && echo a >> /tmp/s1 && sort /tmp/s1 | tr '\n' ' ' && echo && rm /tmp/s1
 echo "rc: grep"
-n=$(grep -c ':0:0:' /etc/master.passwd)
+n=$(grep -c '^root:' /etc/master.passwd)
 [ "$n" = 1 ] && echo "rc: grep ok" || echo "rc: grep FAILED: $n"
 echo "a b c" | grep -o b
 echo "rc: grep v: $(printf 'x\ny\n' | grep -v x)"
