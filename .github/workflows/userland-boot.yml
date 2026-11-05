@@ -108,4 +108,7 @@ jobs:
           retention-days: 14
 
       - name: Boot result
-        run: grep -q "USERLAND-SELFTEST-OK" build/qemu/uart1.log
+        run: |
+          grep -q "USERLAND-SELFTEST-OK" build/qemu/uart1.log
+          grep -q "rc: sort ok" build/qemu/uart1.log
+          grep -q "uid=0(root)" build/qemu/uart1.log

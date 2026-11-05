@@ -273,13 +273,7 @@ jobs:
         continue-on-error: true
         run: |
           userland/patch-sort.sh build/userland/src/text_cmds
-          LIB_EXTRA_CFLAGS="-Wimplicit-function-declaration -Wint-conversion" \
-            userland/build-commands.sh build/userland/dxb build/userland/src build/userland/root text_cmds cat sed wc head tail sort tr cut || rc=$?
-          # COMPAT_FLAGS silences implicit declarations (re-enabled above): they turn pointer returns into int
-          echo "::group::implicit declarations and size warnings in sort"
-          grep -hE "implicit (function )?declaration|incompatible (pointer|integer)|int-to-pointer|pointer-to-int" build/userland/dxb/build/cmd-text_cmds-sort.log | sort -u | head -40 || true
-          echo "::endgroup::"
-          exit ${rc:-0}
+          userland/build-commands.sh build/userland/dxb build/userland/src build/userland/root text_cmds cat sed wc head tail sort tr cut
 
       - name: Undefined symbols and missing libraries (tools/macho_undef.py)
         id: undef

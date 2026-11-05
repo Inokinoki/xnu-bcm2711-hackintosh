@@ -14,23 +14,9 @@ echo "rc: file tests"
 echo data > /tmp/selftest && cp /tmp/selftest /tmp/selftest2 && cat /tmp/selftest2 && rm /tmp/selftest /tmp/selftest2
 echo "rc: user lookup"
 id root
-id -un
 ls -ld /var/root /etc/passwd
 echo "rc: sort"
-wc -l /etc/passwd
-t() { echo "rc: sort [$*]"; "$@" < /etc/passwd > /tmp/sortout; echo "rc: exit $? bytes $(wc -c < /tmp/sortout)"; }
-semtest; echo "rc: semtest exit $?"
-SORT_DEBUG=1 t sort
-t sort
-t sort -k1
-t sort -k1,1 -t:
-t sort -n
-t sort -u
-t sort -m
-t sort -c
-t sort -b
-t sort -f
-t sort -d
-sort -o /tmp/sortout2 /etc/passwd; echo "rc: sort -o exit $? bytes $(wc -c < /tmp/sortout2)"
-echo b | sort; echo "rc: tiny sort exit $?"
+first=$(sort /etc/passwd | head -1)
+[ "$first" = "##" ] && echo "rc: sort ok" || echo "rc: sort FAILED: $first"
+echo b > /tmp/s1 && echo a >> /tmp/s1 && sort /tmp/s1 | tr '\n' ' ' && echo && rm /tmp/s1
 echo "rc: done USERLAND-SELFTEST-OK"

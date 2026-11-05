@@ -199,5 +199,17 @@ SEGMENTS=1` (workflow input `spawn`), so a crash leaves the dyld log instead of 
 Kernel issue to fix properly (not worked around): a user `munmap` of a range outside the pmap's address space should
 return an error, not panic (`vm_map` max offset is larger than the pmap's).
 
-Known gaps seen in the log: `getpwuid(0)` fails (the prompt says "I have no name!": the Libinfo file module does not find
-root), `sort /etc/passwd | head -2` printed nothing, `PS1` from `/etc/profile` is not used by the login shell, `/dev` is read-only.
+Fixed after the first boot:
+
+- `getpwuid(0)` failed ("I have no name!"): as root Libinfo's file module reads `/etc/master.passwd`, which has 10 fields
+  (name:passwd:uid:gid:class:change:expire:gecos:dir:shell); ours had the 7 of `/etc/passwd`. The prompt's `PS1` was
+  applied all along (its `\h` was empty because no hostname was set; `/etc/rc` now runs `hostname macpi`).
+- `sort` died with exit 255 and no output on every input. Its crash handler hides the signal, so `userland/patch-sort.sh`
+  makes it print signal, address and symbol. Cause: clang compiles `memset(p, 0, n); return p;` (`sort_list_item_alloc`) to a
+  tail call to `bzero` and returns whatever `bzero` leaves in `x0`. Apple's closed arm64 `bzero` leaves the destination there;
+  libplatform's generic `bzero` is `void` and left the end of its helper's loop (`p + 12` for 16 bytes). Every `sort` item
+  therefore pointed into the next heap block and the following write clobbered its key pointer.
+  `userland/patch-libplatform.sh` makes `bzero`, `__bzero` and `_platform_bzero` return their argument. Any other code
+  that clang compiles the same way was affected too.
+
+Known gaps: `/dev` is read-only, `grep` is not built (liblzma).
