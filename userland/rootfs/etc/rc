@@ -17,6 +17,6 @@ id root
 ls -ld /var/root /etc/passwd
 echo "rc: sort"
 first=$(sort /etc/passwd | head -1)
-[ "$first" = "##" ] && echo "rc: sort ok" || echo "rc: sort FAILED: $first"
+[ "$first" = "# User Database" ] && echo "rc: sort ok" || echo "rc: sort FAILED: $first"
 echo b > /tmp/s1 && echo a >> /tmp/s1 && sort /tmp/s1 | tr '\n' ' ' && echo && rm /tmp/s1
 echo "rc: done USERLAND-SELFTEST-OK"
