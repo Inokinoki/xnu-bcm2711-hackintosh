@@ -48,7 +48,16 @@ jobs:
           echo "DEVELOPER_DIR=$XC/Contents/Developer" >> "$GITHUB_ENV"
           sudo xcode-select -s "$XC"
 
+      # the xnu patch that stages BearSSL fetches it from bearssl.org, which is down at times
+      - name: BearSSL cache
+        uses: actions/cache@v4
+        with:
+          path: build/bearssl-cache
+          key: bearssl-7bea48e5e850ab4cafbe68d3765cdaba13a86d6f
+
       - name: xnu headers, Libsystem headers, mig
+        env:
+          BEARSSL_CACHE: ${{ github.workspace }}/build/bearssl-cache
         run: userland/dxb-headers.sh build/userland/dxb
 
       - name: Libc and libmalloc headers

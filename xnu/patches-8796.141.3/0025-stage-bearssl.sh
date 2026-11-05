@@ -6,16 +6,29 @@ set -euo pipefail
 bearssl_sha=7bea48e5e850ab4cafbe68d3765cdaba13a86d6f
 bearssl_tmp=$(mktemp -d)
 trap 'rm -rf "$bearssl_tmp"' EXIT
-git init -q "$bearssl_tmp"
-# bearssl.org answers 502 now and then: retry
-for attempt in 1 2 3 4 5; do
-    git -C "$bearssl_tmp" fetch -q --depth 1 \
-        https://www.bearssl.org/git/BearSSL "$bearssl_sha" && break
-    [[ $attempt -lt 5 ]] || exit 1
-    sleep $((attempt * 10))
-done
-git -C "$bearssl_tmp" checkout -q FETCH_HEAD
-[[ "$(git -C "$bearssl_tmp" rev-parse HEAD)" == "$bearssl_sha" ]]
+# BEARSSL_CACHE: a directory a CI cache keeps between runs, so an outage of bearssl.org does not stop a build
+cache=${BEARSSL_CACHE:-}
+if [[ -n "$cache" && -d "$cache/.git" && "$(git -C "$cache" rev-parse HEAD 2>/dev/null)" == "$bearssl_sha" ]]; then
+    echo "BearSSL $bearssl_sha from the cache"
+    git -C "$cache" checkout -q --force HEAD
+    cp -R "$cache/." "$bearssl_tmp/"
+else
+    git init -q "$bearssl_tmp"
+    # bearssl.org answers 502 now and then: retry
+    for attempt in 1 2 3 4 5; do
+        git -C "$bearssl_tmp" fetch -q --depth 1 \
+            https://www.bearssl.org/git/BearSSL "$bearssl_sha" && break
+        [[ $attempt -lt 5 ]] || exit 1
+        sleep $((attempt * 10))
+    done
+    git -C "$bearssl_tmp" checkout -q FETCH_HEAD
+    [[ "$(git -C "$bearssl_tmp" rev-parse HEAD)" == "$bearssl_sha" ]]
+    if [[ -n "$cache" ]]; then
+        rm -rf "$cache"
+        mkdir -p "$cache"
+        cp -R "$bearssl_tmp/." "$cache/"
+    fi
+fi
 python3 - "$bearssl_tmp" <<'PY'
 from pathlib import Path
 import shutil
