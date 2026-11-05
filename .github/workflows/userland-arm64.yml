@@ -246,6 +246,11 @@ jobs:
           LIBSYSTEM_SRC: build/userland/src
         run: userland/build-libsystem.sh build/userland/root
 
+      - name: libz, libbz2, liblzma
+        id: compress
+        continue-on-error: true
+        run: userland/build-compress-libs.sh build/userland/dxb build/userland/src build/userland/root build/userland/compress
+
       - name: init (/sbin/launchd)
         id: init
         continue-on-error: true
@@ -273,7 +278,7 @@ jobs:
         continue-on-error: true
         run: |
           userland/patch-sort.sh build/userland/src/text_cmds
-          userland/build-commands.sh build/userland/dxb build/userland/src build/userland/root text_cmds cat sed wc head tail sort tr cut
+          userland/build-commands.sh build/userland/dxb build/userland/src build/userland/root text_cmds cat sed wc head tail sort tr cut grep
 
       - name: Undefined symbols and missing libraries (tools/macho_undef.py)
         id: undef

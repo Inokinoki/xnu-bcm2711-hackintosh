@@ -16,6 +16,7 @@ removefile
 mDNSResponder
 Libsystem
 zlib
+bzip2               # libbz2, for grep
 ncurses
 libedit
 libiconv
