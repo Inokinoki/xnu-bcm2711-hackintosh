@@ -12,6 +12,7 @@ mkdir -p "${3:?}"
 OUTROOT=$(cd "$3" && pwd)
 . "$HERE/lib-env.sh"
 P=$SRC/libplatform
+"$HERE/patch-libplatform.sh" "$P"
 VARIANT=${VARIANT:-}
 OBJ=$DXB/build/libplatform${VARIANT:+-$VARIANT}.obj
 rm -rf "$OBJ"
