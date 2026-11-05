@@ -141,7 +141,7 @@ jobs:
         env:
           LIB_EXTRA_CFLAGS: -DOS_VARIANT_RESOLVED=1 -DOS_VARIANT_NOTRESOLVED=1 -include ${{ github.workspace }}/userland/include/dyld_version_shim.h
         run: |
-          userland/patch-libmalloc.sh build/userland/src/libmalloc
+          LIBMALLOC_NANO=1 userland/patch-libmalloc.sh build/userland/src/libmalloc
           userland/build-xcode-lib.sh build/userland/dxb build/userland/src build/userland/root libmalloc libsystem_malloc
 
       - name: Static archives for dyld
