@@ -235,7 +235,8 @@ fuser) are built and run at boot (`sysctl kern.ostype` prints Darwin, `mount` li
   `hostinfo` (`slot_name`), `arch` (`NXGetArchInfo`, `sysdir`).
 - CI moved to `macos-15`/Xcode 16.4 (the `macos-14` runners no longer exist and no hosted image has Xcode 15). Needed fixes:
   Libc's link-list script phase declares its outputs (`patch-libc.sh`), a hidden `wmemchr` for the dyld executable
-  (`userland/src/dyld_wmemchr.c`), zlib includes stdio.h first. The kernel workflow still says `macos-14` and needs
-  Xcode 15's `iig`; it has not been ported, so kernel patch changes cannot be built until it is.
+  (`userland/src/dyld_wmemchr.c`), zlib includes stdio.h first. The kernel workflow is on `macos-15` too: Xcode 16's
+  `iig` emits `rpc.kernelContent`, which patch 0043 adds to `IORPC` (kernel run 42269023162 built; boot run 42271770237 passed
+  with that kernel).
 
 Known gaps: section 5b lists what is still a stand-in.
