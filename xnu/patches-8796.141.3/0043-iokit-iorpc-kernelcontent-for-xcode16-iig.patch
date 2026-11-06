@@ -1,0 +1,42 @@
+From: bcm2711 port
+Subject: [PATCH] iokit: IORPC.kernelContent, which Xcode 16's iig-generated code reads
+
+The macos-14 runners (Xcode 15) are gone; macos-15 only has Xcode 16, whose iig emits
+`rpc.kernelContent` and `IORPC rpc = { ..., .kernelContent = ... }` in every *.iig.cpp. Add the
+field (last, so existing positional layout is unchanged) and fill it where the kernel builds an
+IORPC, with the same IORPCMessageFromMach() result Xcode 15's generated code computed itself.
+---
+diff --git a/iokit/IOKit/IORPC.h b/iokit/IOKit/IORPC.h
+index 3ded78c..c28ddaf 100644
+--- a/iokit/IOKit/IORPC.h
++++ b/iokit/IOKit/IORPC.h
+@@ -224,6 +224,7 @@ struct IORPC {
+ 	IORPCMessageMach * reply;
+ 	uint32_t           sendSize;
+ 	uint32_t           replySize;
++	IORPCMessage *     kernelContent;   /* what Xcode 16's iig-generated code reads (rpc.kernelContent) */
+ };
+ typedef struct IORPC IORPC;
+ 
+diff --git a/iokit/Kernel/IOUserServer.cpp b/iokit/Kernel/IOUserServer.cpp
+index 5d1d922..9bf6cfb 100644
+--- a/iokit/Kernel/IOUserServer.cpp
++++ b/iokit/Kernel/IOUserServer.cpp
+@@ -3209,7 +3209,8 @@ IOUserServer::server(ipc_kmsg_t requestkmsg, ipc_kmsg_t * pReply)
+ 		msgout = (typeof(msgout))ikm_header(replykmsg);
+ 	}
+ 
+-	IORPC rpc = { .message = msgin, .reply = msgout, .sendSize = msgin->msgh.msgh_size, .replySize = replyAlloc };
++	IORPC rpc = { .message = msgin, .reply = msgout, .sendSize = msgin->msgh.msgh_size, .replySize = replyAlloc,
++		      .kernelContent = IORPCMessageFromMach(msgin, false) };
+ 
+ 	if (object) {
+ 		kern_allocation_name_t prior;
+@@ -3355,6 +3356,7 @@ IOUserServerUEXTTrap(OSObject * object, void * p1, void * p2, void * p3, void *
+ 	mach->msgh_body.msgh_descriptor_count = ((mach_msg_size_t) refs);
+ 
+ 	rpc.message   = mach;
++	rpc.kernelContent = IORPCMessageFromMach(mach, false);
+ 	rpc.sendSize  = mach->msgh.msgh_size;
+ 	rpc.reply     = (IORPCMessageMach *) (p + inSize);
+ 	rpc.replySize = ((uint32_t) (sizeof(buffer.buffer) - inSize));    // inSize was checked
