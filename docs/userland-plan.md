@@ -224,4 +224,18 @@ Fixed after the first boot:
 `/dev` is the kernel's devfs, as on macOS: null, zero, tty, stdout, random, urandom work (checked at boot), creating regular
 files there fails with ENOTSUP by design. That was never a fault. `mount` is missing (it is in `system_cmds`).
 
-Known gaps: no `mount`/`system_cmds`; section 5b lists what is still a stand-in.
+`system_cmds` (dmesg sysctl sync pagesize getconf vm_stat mkfile nologin) and `diskdev_cmds` (mount umount mount_devfs mount_fdesc
+fuser) are built and run at boot (`sysctl kern.ostype` prints Darwin, `mount` lists `/dev/md0 on / (hfs)` and devfs). Notes:
+
+- `diskdev_cmds` links APFS, MediaKit, CoreFoundation and IOKit frameworks that this system does not have; nothing on the macOS
+  path of mount/umount uses them, so `userland/patch-diskdev.sh` drops them from the link phases. mount gets stand-ins for
+  libdarwin's closed `os/errno.h`, `os/bsd.h` and `sysexit_np` (`userland/include/os`, `userland/include/APFS`,
+  `userland/src/sysexit_np.c`).
+- Not built because they need closed parts: `reboot`/`halt` (IOKit kext MIG), `login`/`getty` (OpenDirectory, SoftLinking),
+  `hostinfo` (`slot_name`), `arch` (`NXGetArchInfo`, `sysdir`).
+- CI moved to `macos-15`/Xcode 16.4 (the `macos-14` runners no longer exist and no hosted image has Xcode 15). Needed fixes:
+  Libc's link-list script phase declares its outputs (`patch-libc.sh`), a hidden `wmemchr` for the dyld executable
+  (`userland/src/dyld_wmemchr.c`), zlib includes stdio.h first. The kernel workflow still says `macos-14` and needs
+  Xcode 15's `iig`; it has not been ported, so kernel patch changes cannot be built until it is.
+
+Known gaps: section 5b lists what is still a stand-in.
