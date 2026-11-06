@@ -296,7 +296,9 @@ jobs:
         continue-on-error: true
         run: |
           userland/patch-diskdev.sh build/userland/src/diskdev_cmds
-          userland/build-commands.sh build/userland/dxb build/userland/src build/userland/root diskdev_cmds mount umount mount_devfs mount_fdesc fuser
+          # mount needs libdarwin's sysexit_np; the others do not
+          LIB_EXTRA_SRC=$PWD/userland/src/sysexit_np.c userland/build-commands.sh build/userland/dxb build/userland/src build/userland/root diskdev_cmds mount
+          userland/build-commands.sh build/userland/dxb build/userland/src build/userland/root diskdev_cmds umount mount_devfs mount_fdesc fuser
 
       - name: Undefined symbols and missing libraries (tools/macho_undef.py)
         id: undef
