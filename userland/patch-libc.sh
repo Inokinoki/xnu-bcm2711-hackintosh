@@ -35,3 +35,21 @@ open(p, "w").write("\n".join(out))
 PY
 grep -q 'D__DARWIN_NON_CANCELABLE=0' "$D/xcodescripts/variants.xcconfig"
 grep -q dyld_version_shim.h "$D/stdio/stdio_init.c" "$D/secure/chk_fail.c"
+
+# Xcode 16's build system refuses a link whose inputs no script phase declares as outputs. The libsystem_c.dylib
+# target's "Build Link Lists" phase writes interposable.list and unexport.list (which libc.xcconfig passes to the
+# linker) without saying so; Xcode 15 ran the phase first anyway. Declare them.
+python3 -I - "$D/Libc.xcodeproj/project.pbxproj" <<'PY'
+import sys
+p = sys.argv[1]
+s = open(p).read()
+head = '/* Build Link Lists */ = {\n'
+i = s.index(head)
+if '$(DERIVED_FILE_DIR)/interposable.list' not in s[i:i + 700]:
+    old = '\t\t\toutputPaths = (\n\t\t\t);\n'
+    j = s.index(old, i)
+    assert j - i < 600
+    new = ('\t\t\toutputPaths = (\n\t\t\t\t"$(DERIVED_FILE_DIR)/interposable.list",\n'
+           '\t\t\t\t"$(DERIVED_FILE_DIR)/unexport.list",\n\t\t\t);\n')
+    open(p, "w").write(s[:j] + new + s[j + len(old):])
+PY
