@@ -32,7 +32,7 @@ concurrency:
 jobs:
   boot:
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 40
     permissions:
       actions: read
