@@ -170,7 +170,9 @@ jobs:
         run: |
           userland/patch-dyld.sh build/userland/src/dyld
           for t in dyld libdyld.dylib; do
-            userland/build-xcode-lib.sh build/userland/dxb build/userland/src build/userland/root dyld "$t" DYLD_LIBS_DIR="$PWD/build/userland/root/usr/local/lib/dyld" \
+            # only the dyld executable needs the wmemchr stand-in (Xcode 16's libc++ headers pull it in)
+            extra=; [ "$t" != dyld ] || extra=$PWD/userland/src/dyld_wmemchr.c
+            LIB_EXTRA_SRC=$extra userland/build-xcode-lib.sh build/userland/dxb build/userland/src build/userland/root dyld "$t" DYLD_LIBS_DIR="$PWD/build/userland/root/usr/local/lib/dyld" \
               DYLD_EXTRA_INC="-idirafter $PWD/build/userland/dxb/fakeroot/usr/local/include -idirafter $PWD/userland/include -idirafter $PWD/userland/include-dyld"
           done
 
