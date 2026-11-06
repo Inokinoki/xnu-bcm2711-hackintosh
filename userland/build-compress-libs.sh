@@ -27,7 +27,7 @@ dylib() {	# NAME VERSION-LIST...: link the objects in $WORK/NAME/*.o
 Z=$SRC/zlib/zlib
 mkdir -p "$WORK/z"
 for f in adler32 compress crc32 deflate gzclose gzlib gzread gzwrite infback inffast inflate inftrees trees uncompr zutil; do
-	$CC -DHAVE_UNISTD_H -DHAVE_STDARG_H -I"$Z" -c "$Z/$f.c" -o "$WORK/z/$f.o"
+	$CC -include stdio.h -include unistd.h -DHAVE_UNISTD_H -DHAVE_STDARG_H -I"$Z" -c "$Z/$f.c" -o "$WORK/z/$f.o"
 done
 dylib z /usr/lib/libz.1.dylib 1.0.0 1.2.12
 ln -sf libz.1.dylib "$OUT/usr/lib/libz.dylib"

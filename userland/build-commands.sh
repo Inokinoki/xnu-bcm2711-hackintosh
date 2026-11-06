@@ -15,6 +15,7 @@ for t in "$@"; do
 	else
 		echo "FAILED $t"
 		grep -E "error:|Undefined symbols|^  \"_|ld: " "$DXB/build/cmd-$PROJECT-$t.log" | sort -u | head -12
+		grep -A10 "^Undefined symbols" "$DXB/build/cmd-$PROJECT-$t.log" | grep '^  "' | sort -u | head -12
 		failed="$failed $t"
 	fi
 	echo "::endgroup::"

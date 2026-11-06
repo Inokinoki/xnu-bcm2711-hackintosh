@@ -289,7 +289,7 @@ jobs:
       - name: system_cmds
         id: system_cmds
         continue-on-error: true
-        run: userland/build-commands.sh build/userland/dxb build/userland/src build/userland/root system_cmds dmesg sysctl sync pagesize getconf reboot halt vm_stat hostinfo mkfile arch nologin getty login
+        run: userland/build-commands.sh build/userland/dxb build/userland/src build/userland/root system_cmds dmesg sysctl sync pagesize getconf vm_stat hostinfo mkfile arch nologin
 
       - name: diskdev_cmds
         id: diskdev_cmds
