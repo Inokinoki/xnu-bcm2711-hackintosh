@@ -30,4 +30,10 @@ echo "rc: dev"
 echo x > /dev/null && echo "rc: dev null ok"
 [ "$(head -c 4 /dev/zero | wc -c | tr -d ' ')" = 4 ] && echo "rc: dev zero ok"
 echo "rc: dev tty" > /dev/tty && echo "rc: dev tty ok"
+echo "rc: system cmds"
+sysctl kern.ostype kern.osrelease hw.pagesize
+pagesize
+getconf PAGE_SIZE
+dmesg | head -2
+mount
 echo "rc: done USERLAND-SELFTEST-OK"

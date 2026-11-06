@@ -280,6 +280,16 @@ jobs:
           userland/patch-sort.sh build/userland/src/text_cmds
           userland/build-commands.sh build/userland/dxb build/userland/src build/userland/root text_cmds cat sed wc head tail sort tr cut grep
 
+      - name: system_cmds
+        id: system_cmds
+        continue-on-error: true
+        run: userland/build-commands.sh build/userland/dxb build/userland/src build/userland/root system_cmds dmesg sysctl sync pagesize getconf reboot halt vm_stat hostinfo mkfile arch nologin getty login
+
+      - name: diskdev_cmds
+        id: diskdev_cmds
+        continue-on-error: true
+        run: userland/build-commands.sh build/userland/dxb build/userland/src build/userland/root diskdev_cmds mount umount mount_devfs mount_fdesc fuser
+
       - name: Undefined symbols and missing libraries (tools/macho_undef.py)
         id: undef
         if: always()
