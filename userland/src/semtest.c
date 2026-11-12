@@ -181,7 +181,7 @@ dns_probe(void)
 			memcpy(r, q, n);
 			r[2] = 0x81; r[3] = 0x80;
 			r[6] = 0; r[7] = 0;
-			if (q[n - 3] == 0 && q[n - 2] == 1) {    /* QTYPE A */
+			if (q[n - 4] == 0 && q[n - 3] == 1) {    /* QTYPE A */
 				static const unsigned char rr[] = { 0xc0, 0x0c, 0, 1, 0, 1, 0, 0, 0, 60, 0, 4, 10, 1, 2, 3 };
 
 				memcpy(r + n, rr, sizeof(rr));
