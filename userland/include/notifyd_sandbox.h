@@ -3,8 +3,10 @@
 #ifndef NOTIFYD_SANDBOX_STANDIN_H
 #define NOTIFYD_SANDBOX_STANDIN_H
 #define SANDBOX_CHECK_NO_REPORT 0x40000000
-#define SANDBOX_FILTER_NONE 0
-#define SANDBOX_FILTER_PATH 1
-#define SANDBOX_FILTER_NOTIFICATION 6
+enum sandbox_filter_type {    /* the SDK only forward-declares it */
+	SANDBOX_FILTER_NONE = 0,
+	SANDBOX_FILTER_PATH = 1,
+	SANDBOX_FILTER_NOTIFICATION = 6,
+};
 #include <errno.h>    /* notify_proc.c uses errno without including it */
 #endif
