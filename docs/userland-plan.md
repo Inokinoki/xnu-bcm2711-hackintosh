@@ -180,7 +180,8 @@ New work comes from this report, not from guessing.
 | notifyd (`Libnotify-312.140.2`) | real | built from source (osascript shim for its admin-password script phase, `libbsm.0` stand-in, sandbox constants force-included), started by init after the bootstrap server; QEMU boot checks `notify_post` from one process seen by `notify_check` in another (libnotify disables itself in a fork child, so the test execs) |
 | libsystem_darwin (`os_variant_*`), libsystem_featureflags, libcorecrypto, libsystem_dnssd, libquarantine | constant / empty | correct for this system (not an internal build, no flags, no quarantine); libraries only have to exist |
 | libncurses.5.4 | termcap stub | `tgetent` fails; real ncurses-61 when a command needs curses |
-| Libinfo membership, ds, mdns modules | ENOENT / unavailable | files-only lookups; DNS needs a resolver module (stage F) |
+| Libinfo membership, ds modules | ENOENT / unavailable | files-only lookups |
+| Libinfo mdns module | UDP stub resolver | `userland/src/libinfo/mdns_module.c`: A/AAAA over UDP to the `/etc/resolv.conf` nameservers, no search list/TCP/PTR; QEMU boot checks `getaddrinfo` against a loopback DNS server |
 | libobjc | none | Blocks is built with `HAVE_OBJC=0`, libdispatch with `HAVE_OBJC 0` |
 
 ## 5c. Boot on QEMU: the userland runs (workflow `userland-boot`, macos-14, QEMU 11, RAM disk root)
