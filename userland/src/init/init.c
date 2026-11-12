@@ -128,6 +128,34 @@ spawn(const char *path, char *const argv[])
 	return pid;
 }
 
+/* a daemon: its own session, console output, but not the controlling terminal (the shell that follows must get it) */
+static pid_t
+spawn_daemon(const char *path, char *const argv[])
+{
+	pid_t pid = fork();
+
+	if (pid == 0) {
+		int fd;
+
+		setsid();
+		fd = open("/dev/console", O_RDWR | O_NOCTTY);
+		if (fd >= 0) {
+			dup2(fd, 0);
+			dup2(fd, 1);
+			dup2(fd, 2);
+			if (fd > 2) {
+				close(fd);
+			}
+		}
+		signal(SIGUSR1, SIG_DFL);
+		signal(SIGUSR2, SIG_DFL);
+		execv(path, argv);
+		printf("init: cannot execute %s: %s\n", path, strerror(errno));
+		_exit(127);
+	}
+	return pid;
+}
+
 /* ---- bootstrap server ---- */
 
 #define BS_MAX_SERVICES 64
@@ -342,7 +370,7 @@ main(void)
 		char *const nd_argv[] = { "notifyd", NULL };
 
 		setenv("OS_LOG_STDERR", "1", 1);
-		printf("init: starting notifyd (pid %d)\n", spawn("/usr/sbin/notifyd", nd_argv));
+		printf("init: starting notifyd (pid %d)\n", spawn_daemon("/usr/sbin/notifyd", nd_argv));
 	}
 	if (stat("/etc/rc", &st) == 0 && stat("/bin/sh", &st) == 0) {
 		printf("init: running /etc/rc\n");
