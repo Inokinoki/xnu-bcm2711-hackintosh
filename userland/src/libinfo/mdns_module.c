@@ -22,6 +22,9 @@
 #include <unistd.h>
 #include <dispatch/dispatch.h>
 
+#ifndef MAXDNAME
+#define MAXDNAME 1025
+#endif
 #define MDNS_MAX_SERVERS 3
 #define MDNS_TIMEOUT_MS 2000
 #define MDNS_TRIES 2
