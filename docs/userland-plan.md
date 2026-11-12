@@ -124,7 +124,7 @@ libunwind has the PAC authenticate hints patched out) and the `libSystem.B.dylib
 re-exports the libraries above), plus `libsystem_info` (Libinfo with the OpenDirectory and mDNSResponder modules replaced by
 stand-ins in `userland/src/libinfo/`: files-only lookups), `libsystem_notify` (client library only), `libsystem_m` (openlibm;
 the long double entry points are the double ones) and a `libxpc` stand-in (bootstrap look-ups fail, xpc objects are no-ops).
-Stand-ins also for `libsystem_asl` (syslog family) and `libcommonCrypto` (SHA-256 only, checked against sha256sum), and
+Stand-ins also for `libsystem_asl` (syslog family) and `libcommonCrypto` (digests, HMAC, PBKDF2, AES CCCrypt; see the status table), and
 `libcopyfile`, `libremovefile`, `libutil` are built from source.
 Programs (all plain arm64, linked against our libSystem): `/sbin/launchd` (our minimal PID 1, `userland/src/init/init.c`:
 console, `/etc/rc`, a respawning `/bin/sh`), `bash` 3.2, shell_cmds (echo test sleep env kill pwd true false uname hostname id
@@ -174,7 +174,7 @@ New work comes from this report, not from guessing.
 | Library | State | Notes |
 |---|---|---|
 | libmacho, libsystem_collections, libc `fenv` (libm_extra.c) | real | libmacho written from loader.h; collections from Libc |
-| libcommonCrypto | partial | SHA-256 only (checked against sha256sum); MD5/SHA-1/SHA-512: reuse BearSSL (kernel patches 0025-0029) |
+| libcommonCrypto | working subset | MD5, SHA-1/224/256/384/512, HMAC, PBKDF2, AES `CCCrypt` (CBC/ECB, PKCS#7), `CCRandomGenerateBytes` on the pinned BearSSL (`userland/fetch-bearssl.sh`, same files as kernel patch 0025); known-answer tests run in the QEMU boot. Not done: CCCryptor streaming API, other ciphers, SHA-3 |
 | libsystem_trace, libsystem_asl | no-op | with `OS_LOG_STDERR=1` in the environment the messages go to stderr |
 | libxpc, liblaunch (`bootstrap_*`, `vproc_swap_integer`) | working subset | init (`/sbin/launchd`) is the bootstrap server (`userland/include/bootstrap_proto.h`: check_in / look_up / register over one Mach port, children inherit the port); xpc event publishers are static stand-ins that only deliver the initial barrier |
 | notifyd (`Libnotify-312.140.2`) | real | built from source (osascript shim for its admin-password script phase, `libbsm.0` stand-in, sandbox constants force-included), started by init after the bootstrap server; QEMU boot checks `notify_post` from one process seen by `notify_check` in another (libnotify disables itself in a fork child, so the test execs) |
