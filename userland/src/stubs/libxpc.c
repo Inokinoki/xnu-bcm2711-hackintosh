@@ -9,7 +9,6 @@
 #include <stddef.h>
 #include <string.h>
 #include <mach/mach.h>
-#include <mach/mach_traps.h>
 #include "bootstrap_proto.h"
 
 typedef void *xpc_object_t;
@@ -38,7 +37,12 @@ bs_call(mach_port_t bp, int op, const char *name, mach_port_t port, mach_port_t 
 		}
 		own_bp = true;
 	}
-	reply = mach_reply_port();
+	if (mach_port_allocate(mach_task_self(), MACH_PORT_RIGHT_RECEIVE, &reply) != KERN_SUCCESS) {
+		if (own_bp) {
+			mach_port_deallocate(mach_task_self(), bp);
+		}
+		return KERN_RESOURCE_SHORTAGE;
+	}
 
 	memset(&req, 0, sizeof(req));
 	req.head.msgh_bits = MACH_MSGH_BITS(MACH_MSG_TYPE_COPY_SEND, MACH_MSG_TYPE_MAKE_SEND_ONCE) | MACH_MSGH_BITS_COMPLEX;
