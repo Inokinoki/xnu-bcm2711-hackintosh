@@ -17,6 +17,7 @@
 #include <string.h>
 #include <wchar.h>
 #include <notify.h>
+#include <errno.h>
 
 /* malloc alignment probe, run first so the heap is as fresh as sort's: sort's item blocks come back 12 mod 16 */
 static void *probe[64];
@@ -126,7 +127,10 @@ notify_probe(void)
 		notify_check(token, &check);
 		pid = fork();
 		if (pid == 0) {
-			_exit(notify_post("org.giskard.notifytest") == NOTIFY_STATUS_OK ? 0 : 1);
+			uint32_t r = notify_post("org.giskard.notifytest");
+
+			printf("semtest: child notify_post -> %u (errno %d)\n", r, errno);
+			_exit(r == NOTIFY_STATUS_OK ? 0 : 1);
 		}
 		if (pid > 0) {
 			int status = -1;

@@ -341,6 +341,7 @@ main(void)
 	if (stat("/usr/sbin/notifyd", &st) == 0) {
 		char *const nd_argv[] = { "notifyd", NULL };
 
+		setenv("OS_LOG_STDERR", "1", 1);
 		printf("init: starting notifyd (pid %d)\n", spawn("/usr/sbin/notifyd", nd_argv));
 	}
 	if (stat("/etc/rc", &st) == 0 && stat("/bin/sh", &st) == 0) {
