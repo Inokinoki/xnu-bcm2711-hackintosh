@@ -6,6 +6,9 @@
 #include <mach/semaphore.h>
 #include <mach/task.h>
 #include <mach/vm_map.h>
+#include <servers/bootstrap.h>
+#include <sys/wait.h>
+#include <unistd.h>
 #include <sys/mman.h>
 #include <locale.h>
 #include <malloc/malloc.h>
@@ -54,8 +57,57 @@ static void vm_range_probe(void)
 	printf("semtest: vm range probe done\n");
 }
 
+/* the bootstrap server in /sbin/launchd: check in, look up from this process and from a forked child, a message
+ * from the child to the checked-in port, the failure cases */
+static void
+bootstrap_probe(void)
+{
+	struct { mach_msg_header_t h; char text[16]; mach_msg_trailer_t t; } m;
+	mach_port_t bp = MACH_PORT_NULL, svc = MACH_PORT_NULL, again = MACH_PORT_NULL, found = MACH_PORT_NULL;
+	kern_return_t kr;
+	pid_t pid;
+
+	kr = task_get_special_port(mach_task_self(), TASK_BOOTSTRAP_PORT, &bp);
+	printf("semtest: bootstrap port -> %d (%s)\n", kr, bp != MACH_PORT_NULL ? "set" : "null");
+	kr = bootstrap_check_in(bp, "org.giskard.semtest", &svc);
+	printf("semtest: check_in -> %d (%s)\n", kr, svc != MACH_PORT_NULL ? "port" : "no port");
+	kr = bootstrap_check_in(bp, "org.giskard.semtest", &again);
+	printf("semtest: check_in again -> %d (expect 1103)\n", kr);
+	kr = bootstrap_look_up(bp, "org.giskard.semtest", &found);
+	printf("semtest: look_up -> %d (%s)\n", kr, found != MACH_PORT_NULL ? "port" : "no port");
+	kr = bootstrap_look_up(bp, "org.giskard.nothing", &found);
+	printf("semtest: look_up unknown -> %d (expect 1102)\n", kr);
+
+	pid = fork();
+	if (pid == 0) {
+		mach_port_t to = MACH_PORT_NULL;
+		mach_msg_header_t h = { 0 };
+
+		if (bootstrap_look_up(bootstrap_port, "org.giskard.semtest", &to) != KERN_SUCCESS) {
+			_exit(2);
+		}
+		h.msgh_bits = MACH_MSGH_BITS(MACH_MSG_TYPE_COPY_SEND, 0);
+		h.msgh_size = sizeof(h);
+		h.msgh_remote_port = to;
+		h.msgh_id = 4242;
+		_exit(mach_msg(&h, MACH_SEND_MSG, sizeof(h), 0, MACH_PORT_NULL, MACH_MSG_TIMEOUT_NONE, MACH_PORT_NULL) ? 3 : 0);
+	}
+	if (pid > 0 && svc != MACH_PORT_NULL) {
+		int status = -1;
+
+		kr = mach_msg(&m.h, MACH_RCV_MSG | MACH_RCV_TIMEOUT, 0, sizeof(m), svc, 10000, MACH_PORT_NULL);
+		waitpid(pid, &status, 0);
+		printf("semtest: message from child -> %d id %d (child status %d)\n", kr, kr ? 0 : m.h.msgh_id, status);
+	}
+	printf("semtest: bootstrap probe done\n");
+}
+
 int main(int argc, char **argv)
 {
+	if (argc > 1 && !strcmp(argv[1], "bootstrap")) {
+		bootstrap_probe();
+		return 0;
+	}
 	vm_range_probe();
 	if (argc > 1 && !strcmp(argv[1], "vm"))
 		return 0;

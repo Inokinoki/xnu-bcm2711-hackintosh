@@ -14,6 +14,8 @@ echo "rc: file tests"
 echo data > /tmp/selftest && cp /tmp/selftest /tmp/selftest2 && cat /tmp/selftest2 && rm /tmp/selftest /tmp/selftest2
 echo "rc: vm range"
 semtest vm
+echo "rc: bootstrap"
+semtest bootstrap
 echo "rc: user lookup"
 id root
 ls -ld /var/root /etc/passwd
