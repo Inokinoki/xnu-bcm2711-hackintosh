@@ -8,6 +8,7 @@
 #include <mach/vm_map.h>
 #include <servers/bootstrap.h>
 #include <sys/wait.h>
+#include <signal.h>
 #include <unistd.h>
 #include <sys/mman.h>
 #include <locale.h>
@@ -18,6 +19,10 @@
 #include <wchar.h>
 #include <notify.h>
 #include <errno.h>
+#include <netdb.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
 
 /* malloc alignment probe, run first so the heap is as fresh as sort's: sort's item blocks come back 12 mod 16 */
 static void *probe[64];
@@ -143,10 +148,75 @@ notify_probe(void)
 	printf("semtest: notify probe done\n");
 }
 
+/* the stub resolver of the mdns module: a one-shot DNS server on loopback answers A queries with 10.1.2.3 */
+static void
+dns_probe(void)
+{
+	struct sockaddr_in sa = { .sin_len = sizeof(sa), .sin_family = AF_INET, .sin_port = htons(53) };
+	struct addrinfo hints = { .ai_family = AF_INET, .ai_socktype = SOCK_STREAM }, *res = NULL;
+	int fd = socket(AF_INET, SOCK_DGRAM, 0), rc;
+	pid_t pid;
+	FILE *f;
+
+	sa.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+	printf("semtest: dns socket %d bind %d\n", fd, fd < 0 ? -1 : bind(fd, (struct sockaddr *)&sa, sizeof(sa)));
+	f = fopen("/etc/resolv.conf", "w");
+	if (f) {
+		fputs("nameserver 127.0.0.1\n", f);
+		fclose(f);
+	}
+	pid = fork();
+	if (pid == 0) {
+		unsigned char q[512], r[600];
+		struct sockaddr_in from;
+		socklen_t fl = sizeof(from);
+		ssize_t n;
+
+		/* answer every query for up to three rounds: A gets 10.1.2.3, other types an empty answer */
+		for (int i = 0; i < 4; i++) {
+			n = recvfrom(fd, q, sizeof(q), 0, (struct sockaddr *)&from, &fl);
+			if (n < 12) {
+				_exit(1);
+			}
+			memcpy(r, q, n);
+			r[2] = 0x81; r[3] = 0x80;
+			r[6] = 0; r[7] = 0;
+			if (q[n - 3] == 0 && q[n - 2] == 1) {    /* QTYPE A */
+				static const unsigned char rr[] = { 0xc0, 0x0c, 0, 1, 0, 1, 0, 0, 0, 60, 0, 4, 10, 1, 2, 3 };
+
+				memcpy(r + n, rr, sizeof(rr));
+				r[7] = 1;
+				n += sizeof(rr);
+			}
+			sendto(fd, r, n, 0, (struct sockaddr *)&from, fl);
+		}
+		_exit(0);
+	}
+	close(fd);
+	rc = getaddrinfo("test.giskard.example", "80", &hints, &res);
+	if (rc == 0 && res && res->ai_addr->sa_family == AF_INET) {
+		char b[32];
+
+		inet_ntop(AF_INET, &((struct sockaddr_in *)res->ai_addr)->sin_addr, b, sizeof(b));
+		printf("semtest: getaddrinfo -> 0 %s\n", b);
+	} else {
+		printf("semtest: getaddrinfo -> %d (%s)\n", rc, gai_strerror(rc));
+	}
+	if (pid > 0) {
+		kill(pid, 9);
+		waitpid(pid, NULL, 0);
+	}
+	printf("semtest: dns probe done\n");
+}
+
 int main(int argc, char **argv)
 {
 	if (argc > 1 && !strcmp(argv[1], "bootstrap")) {
 		bootstrap_probe();
+		return 0;
+	}
+	if (argc > 1 && !strcmp(argv[1], "dns")) {
+		dns_probe();
 		return 0;
 	}
 	if (argc > 1 && !strcmp(argv[1], "notify-post")) {
