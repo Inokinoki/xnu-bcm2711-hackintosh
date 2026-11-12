@@ -127,10 +127,9 @@ notify_probe(void)
 		notify_check(token, &check);
 		pid = fork();
 		if (pid == 0) {
-			uint32_t r = notify_post("org.giskard.notifytest");
-
-			printf("semtest: child notify_post -> %u (errno %d)\n", r, errno);
-			_exit(r == NOTIFY_STATUS_OK ? 0 : 1);
+			/* libnotify disables itself in the child of a fork once the parent used it: post from a fresh process */
+			execl("/usr/bin/semtest", "semtest", "notify-post", NULL);
+			_exit(127);
 		}
 		if (pid > 0) {
 			int status = -1;
@@ -149,6 +148,12 @@ int main(int argc, char **argv)
 	if (argc > 1 && !strcmp(argv[1], "bootstrap")) {
 		bootstrap_probe();
 		return 0;
+	}
+	if (argc > 1 && !strcmp(argv[1], "notify-post")) {
+		uint32_t r = notify_post("org.giskard.notifytest");
+
+		printf("semtest: notify_post -> %u\n", r);
+		return r != NOTIFY_STATUS_OK;
 	}
 	if (argc > 1 && !strcmp(argv[1], "notify")) {
 		notify_probe();
