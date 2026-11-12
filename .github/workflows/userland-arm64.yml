@@ -230,6 +230,7 @@ jobs:
         id: notifyd
         continue-on-error: true
         run: |
+          PATH="$PWD/userland/shims:$PATH" \
           LIB_EXTRA_CFLAGS="-include $PWD/userland/include/notifyd_sandbox.h" \
             userland/build-commands.sh build/userland/dxb build/userland/src build/userland/root Libnotify notifyd
 

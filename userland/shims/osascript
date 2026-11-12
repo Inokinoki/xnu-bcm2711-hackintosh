@@ -1,0 +1,6 @@
+#!/bin/sh
+# Libnotify's notifyd target runs xcodescripts/mk_notify_conf.sh through `osascript ... with administrator privileges`,
+# which on a CI runner waits forever for a password dialog. The script only touches the host's /etc/notify.conf; our root
+# ships its own (userland/rootfs/etc/notify.conf), so do nothing.
+echo "osascript shim: skipped: $*" >&2
+exit 0
