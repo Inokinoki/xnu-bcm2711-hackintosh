@@ -176,7 +176,8 @@ New work comes from this report, not from guessing.
 | libmacho, libsystem_collections, libc `fenv` (libm_extra.c) | real | libmacho written from loader.h; collections from Libc |
 | libcommonCrypto | partial | SHA-256 only (checked against sha256sum); MD5/SHA-1/SHA-512: reuse BearSSL (kernel patches 0025-0029) |
 | libsystem_trace, libsystem_asl | no-op | with `OS_LOG_STDERR=1` in the environment the messages go to stderr |
-| libxpc, liblaunch (`bootstrap_*`, `vproc_swap_integer`) | failing | bootstrap look-ups fail until init is a bootstrap server |
+| libxpc, liblaunch (`bootstrap_*`, `vproc_swap_integer`) | working subset | init (`/sbin/launchd`) is the bootstrap server (`userland/include/bootstrap_proto.h`: check_in / look_up / register over one Mach port, children inherit the port); xpc event publishers are static stand-ins that only deliver the initial barrier |
+| notifyd (`Libnotify-312.140.2`) | real | built from source (osascript shim for its admin-password script phase, `libbsm.0` stand-in, sandbox constants force-included), started by init after the bootstrap server; QEMU boot checks `notify_post` from one process seen by `notify_check` in another (libnotify disables itself in a fork child, so the test execs) |
 | libsystem_darwin (`os_variant_*`), libsystem_featureflags, libcorecrypto, libsystem_dnssd, libquarantine | constant / empty | correct for this system (not an internal build, no flags, no quarantine); libraries only have to exist |
 | libncurses.5.4 | termcap stub | `tgetent` fails; real ncurses-61 when a command needs curses |
 | Libinfo membership, ds, mdns modules | ENOENT / unavailable | files-only lookups; DNS needs a resolver module (stage F) |
