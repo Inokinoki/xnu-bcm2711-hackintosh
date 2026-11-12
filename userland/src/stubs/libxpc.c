@@ -9,6 +9,7 @@
 #include <stddef.h>
 #include <string.h>
 #include <mach/mach.h>
+#include <mach/mach_traps.h>
 #include "bootstrap_proto.h"
 
 typedef void *xpc_object_t;
