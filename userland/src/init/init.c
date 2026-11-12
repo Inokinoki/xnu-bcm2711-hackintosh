@@ -338,6 +338,11 @@ main(void)
 
 	remount_root_rw();
 	start_bootstrap_server();
+	if (stat("/usr/sbin/notifyd", &st) == 0) {
+		char *const nd_argv[] = { "notifyd", NULL };
+
+		printf("init: starting notifyd (pid %d)\n", spawn("/usr/sbin/notifyd", nd_argv));
+	}
 	if (stat("/etc/rc", &st) == 0 && stat("/bin/sh", &st) == 0) {
 		printf("init: running /etc/rc\n");
 		wait_for(spawn("/bin/sh", rc_argv));

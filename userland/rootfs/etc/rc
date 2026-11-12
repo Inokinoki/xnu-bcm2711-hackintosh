@@ -16,6 +16,8 @@ echo "rc: vm range"
 semtest vm
 echo "rc: bootstrap"
 semtest bootstrap
+echo "rc: notify"
+semtest notify
 echo "rc: user lookup"
 id root
 ls -ld /var/root /etc/passwd

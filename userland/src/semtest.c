@@ -16,6 +16,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <wchar.h>
+#include <notify.h>
 
 /* malloc alignment probe, run first so the heap is as fresh as sort's: sort's item blocks come back 12 mod 16 */
 static void *probe[64];
@@ -102,10 +103,51 @@ bootstrap_probe(void)
 	printf("semtest: bootstrap probe done\n");
 }
 
+/* notifyd: wait for its service, then post from a child and watch the token change here */
+static void
+notify_probe(void)
+{
+	mach_port_t np = MACH_PORT_NULL;
+	int token = -1, check = -1, changed = -1;
+	uint32_t st;
+	pid_t pid;
+
+	for (int i = 0; i < 100 && np == MACH_PORT_NULL; i++) {
+		if (bootstrap_look_up(bootstrap_port, "com.apple.system.notification_center", &np) != KERN_SUCCESS) {
+			usleep(100000);
+		}
+	}
+	printf("semtest: notifyd service %s\n", np != MACH_PORT_NULL ? "found" : "NOT found");
+	st = notify_register_check("org.giskard.notifytest", &token);
+	printf("semtest: notify_register_check -> %u\n", st);
+	if (st == NOTIFY_STATUS_OK) {
+		st = notify_check(token, &check);     /* the first check always reports a change */
+		printf("semtest: notify_check first -> %u changed %d\n", st, check);
+		notify_check(token, &check);
+		pid = fork();
+		if (pid == 0) {
+			_exit(notify_post("org.giskard.notifytest") == NOTIFY_STATUS_OK ? 0 : 1);
+		}
+		if (pid > 0) {
+			int status = -1;
+
+			waitpid(pid, &status, 0);
+			printf("semtest: notify_post in child -> status %d\n", status);
+		}
+		st = notify_check(token, &changed);
+		printf("semtest: notify_check after post -> %u changed %d\n", st, changed);
+	}
+	printf("semtest: notify probe done\n");
+}
+
 int main(int argc, char **argv)
 {
 	if (argc > 1 && !strcmp(argv[1], "bootstrap")) {
 		bootstrap_probe();
+		return 0;
+	}
+	if (argc > 1 && !strcmp(argv[1], "notify")) {
+		notify_probe();
 		return 0;
 	}
 	vm_range_probe();

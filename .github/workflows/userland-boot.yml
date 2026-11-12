@@ -123,5 +123,8 @@ jobs:
           grep -q "semtest: check_in again -> 1103" build/qemu/uart1.log
           grep -q "semtest: look_up -> 0 (port)" build/qemu/uart1.log
           grep -q "semtest: look_up unknown -> 1102" build/qemu/uart1.log
+          grep -q "semtest: notifyd service found" build/qemu/uart1.log
+          grep -q "semtest: notify_register_check -> 0" build/qemu/uart1.log
+          grep -q "semtest: notify_check after post -> 0 changed 1" build/qemu/uart1.log
           grep -q "semtest: message from child -> 0 id 4242 (child status 0)" build/qemu/uart1.log
           grep -q "uid=0(root)" build/qemu/uart1.log
