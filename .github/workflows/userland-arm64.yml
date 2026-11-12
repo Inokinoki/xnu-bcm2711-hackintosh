@@ -229,7 +229,9 @@ jobs:
       - name: notifyd
         id: notifyd
         continue-on-error: true
-        run: userland/build-commands.sh build/userland/dxb build/userland/src build/userland/root Libnotify notifyd
+        run: |
+          LIB_EXTRA_CFLAGS="-include $PWD/userland/include/notifyd_sandbox.h" \
+            userland/build-commands.sh build/userland/dxb build/userland/src build/userland/root Libnotify notifyd
 
       - name: libcopyfile, libremovefile, libutil
         id: cmdlibs
