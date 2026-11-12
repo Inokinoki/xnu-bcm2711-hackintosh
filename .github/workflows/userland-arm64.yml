@@ -226,6 +226,11 @@ jobs:
           done
           userland/build-stub-lib.sh build/userland/root libncurses.5.4 usr/lib
 
+      - name: notifyd
+        id: notifyd
+        continue-on-error: true
+        run: userland/build-commands.sh build/userland/dxb build/userland/src build/userland/root Libnotify notifyd
+
       - name: libcopyfile, libremovefile, libutil
         id: cmdlibs
         continue-on-error: true

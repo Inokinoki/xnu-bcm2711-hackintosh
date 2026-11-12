@@ -15,7 +15,7 @@ mkdir -p "$OUTROOT/$DIR"
 # libraries of /usr/lib/system are parts of the System umbrella; others (libncurses) are linked directly
 UMBRELLA=
 LIBS=-lSystem
-if [ "$DIR" = usr/lib/system ]; then UMBRELLA="-umbrella System"; LIBS="-lsystem_kernel -lsystem_c -ldyld"; fi
+if [ "$DIR" = usr/lib/system ]; then UMBRELLA="-umbrella System"; LIBS="-lsystem_kernel -lsystem_c -ldyld -lsystem_blocks"; fi
 # shellcheck disable=SC2086
 xcrun clang -target arm64-apple-macos13.0 -mcpu=cortex-a72 -Os -g -isysroot "$SDK" -I"$HERE/include" \
 	-Wno-error -dynamiclib -nostdlib \

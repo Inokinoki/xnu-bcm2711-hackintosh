@@ -5,6 +5,7 @@
  */
 #include <os/log_private.h>
 #include <stdarg.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -96,3 +97,6 @@ _os_log_fault_impl(void *dso, os_log_t log, os_log_type_t type, const char *form
 /* libSystem_initializer: nothing to initialize, nothing to reset after fork */
 void _libtrace_init(void) { }
 void _libtrace_fork_child(void) { }
+
+/* notifyd turns tracing off with this */
+void os_trace_set_mode(uint32_t mode) { (void)mode; }

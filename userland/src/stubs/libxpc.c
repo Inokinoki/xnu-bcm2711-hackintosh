@@ -8,6 +8,8 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <string.h>
+#include <stdlib.h>
+#include <Block.h>
 #include <mach/mach.h>
 #include "bootstrap_proto.h"
 
@@ -113,6 +115,50 @@ bootstrap_register2(mach_port_t bp, const char *service_name, mach_port_t sp, ui
 	(void)flags;
 	return bs_call(bp, BS_REGISTER, service_name, sp, NULL);
 }
+
+/*
+ * The event publisher notifyd connects its Mach channels from: its handler runs with INITIAL_BARRIER once the
+ * publisher is activated (launchd would do that on the publisher's queue; here it runs in the caller). There
+ * are no matching-event descriptors, so ADD and REMOVE never arrive.
+ */
+#define XPC_EVENT_PUBLISHER_ACTION_INITIAL_BARRIER 3
+
+struct _xpc_event_publisher_s {
+	void (^handler)(int action, uint64_t token, xpc_object_t descriptor);
+	void (^error_handler)(int error);
+};
+
+struct _xpc_event_publisher_s *
+xpc_event_publisher_create(const char *name, void *queue)
+{
+	(void)name; (void)queue;
+	return calloc(1, sizeof(struct _xpc_event_publisher_s));
+}
+
+void
+xpc_event_publisher_set_handler(struct _xpc_event_publisher_s *publisher, void (^handler)(int, uint64_t, xpc_object_t))
+{
+	publisher->handler = Block_copy(handler);
+}
+
+void
+xpc_event_publisher_set_error_handler(struct _xpc_event_publisher_s *publisher, void (^handler)(int))
+{
+	publisher->error_handler = Block_copy(handler);
+}
+
+void
+xpc_event_publisher_activate(struct _xpc_event_publisher_s *publisher)
+{
+	if (publisher->handler) {
+		publisher->handler(XPC_EVENT_PUBLISHER_ACTION_INITIAL_BARRIER, 0, NULL);
+	}
+}
+
+uint32_t xpc_event_token_get_uid(uint64_t token) { (void)token; return 0; }
+uint64_t xpc_event_publisher_get_subscriber_asid(struct _xpc_event_publisher_s *publisher, uint64_t token) { (void)publisher; (void)token; return 0; }
+bool xpc_bool_get_value(xpc_object_t xbool) { (void)xbool; return false; }
+const char *xpc_dictionary_get_string(xpc_object_t xdict, const char *key) { (void)xdict; (void)key; return NULL; }
 
 int
 xpc_event_publisher_fire_noboost(void *publisher, uint64_t token, xpc_object_t descriptor)
