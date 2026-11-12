@@ -16,7 +16,6 @@ xpc_event_publisher_t xpc_event_publisher_create(const char *name, void *queue);
 void xpc_event_publisher_set_handler(xpc_event_publisher_t publisher, xpc_event_publisher_handler_t handler);
 void xpc_event_publisher_set_error_handler(xpc_event_publisher_t publisher, xpc_event_publisher_error_handler_t handler);
 void xpc_event_publisher_activate(xpc_event_publisher_t publisher);
-uid_t xpc_event_token_get_uid(uint64_t token);
 uint64_t xpc_event_publisher_get_subscriber_asid(xpc_event_publisher_t publisher, uint64_t token);
 int xpc_event_publisher_fire_noboost(xpc_event_publisher_t publisher, uint64_t token, xpc_object_t descriptor);
 xpc_object_t xpc_copy_entitlement_for_token(const char *key, audit_token_t *token);

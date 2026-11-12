@@ -157,7 +157,6 @@ xpc_event_publisher_activate(struct _xpc_event_publisher_s *publisher)
 	}
 }
 
-uint32_t xpc_event_token_get_uid(uint64_t token) { (void)token; return 0; }
 uint64_t xpc_event_publisher_get_subscriber_asid(struct _xpc_event_publisher_s *publisher, uint64_t token) { (void)publisher; (void)token; return 0; }
 bool xpc_bool_get_value(xpc_object_t xbool) { (void)xbool; return false; }
 const char *xpc_dictionary_get_string(xpc_object_t xdict, const char *key) { (void)xdict; (void)key; return NULL; }
