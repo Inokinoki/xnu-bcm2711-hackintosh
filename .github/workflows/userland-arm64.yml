@@ -226,6 +226,9 @@ jobs:
           done
           userland/build-stub-lib.sh build/userland/root libncurses.5.4 usr/lib
 
+      - name: libbsm (audit token accessors for notifyd)
+        run: userland/build-stub-lib.sh build/userland/root libbsm.0 usr/lib
+
       - name: notifyd
         id: notifyd
         continue-on-error: true
