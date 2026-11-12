@@ -56,8 +56,13 @@ bs_call(mach_port_t bp, int op, const char *name, mach_port_t port, mach_port_t 
 	req.port.type = MACH_MSG_PORT_DESCRIPTOR;
 	strlcpy(req.name, name, sizeof(req.name));
 
-	kr = mach_msg(&req.head, MACH_SEND_MSG | MACH_RCV_MSG | MACH_SEND_TIMEOUT | MACH_RCV_TIMEOUT,
-	    sizeof(req), sizeof(rep), reply, BS_TIMEOUT_MS, MACH_PORT_NULL);
+	/* two calls: a combined send and receive would receive into REQ, not REP */
+	kr = mach_msg(&req.head, MACH_SEND_MSG | MACH_SEND_TIMEOUT, sizeof(req), 0, MACH_PORT_NULL,
+	    BS_TIMEOUT_MS, MACH_PORT_NULL);
+	if (kr == KERN_SUCCESS) {
+		kr = mach_msg(&rep.msg.head, MACH_RCV_MSG | MACH_RCV_TIMEOUT, 0, sizeof(rep), reply,
+		    BS_TIMEOUT_MS, MACH_PORT_NULL);
+	}
 	if (kr == KERN_SUCCESS) {
 		if (rep.msg.head.msgh_id != op + BS_REPLY_ID || rep.msg.head.msgh_size != sizeof(rep.msg) ||
 		    !(rep.msg.head.msgh_bits & MACH_MSGH_BITS_COMPLEX)) {
