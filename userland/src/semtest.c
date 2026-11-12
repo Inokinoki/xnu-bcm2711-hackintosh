@@ -19,6 +19,10 @@
 #include <wchar.h>
 #include <notify.h>
 #include <errno.h>
+#include <CommonCrypto/CommonDigest.h>
+#include <CommonCrypto/CommonHMAC.h>
+#include <CommonCrypto/CommonCryptor.h>
+#include <CommonCrypto/CommonKeyDerivation.h>
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -209,11 +213,91 @@ dns_probe(void)
 	printf("semtest: dns probe done\n");
 }
 
+/* known-answer tests of libcommonCrypto (FIPS 180, RFC 4231, FIPS 197, RFC 6070) */
+static int crypto_bad;
+
+static void
+crypto_check(const char *name, const unsigned char *got, size_t n, const char *want)
+{
+	char hex[129];
+
+	for (size_t i = 0; i < n; i++) {
+		snprintf(hex + 2 * i, 3, "%02x", got[i]);
+	}
+	if (strcmp(hex, want)) {
+		crypto_bad++;
+		printf("semtest: crypto %s FAIL got %s\n", name, hex);
+	} else {
+		printf("semtest: crypto %s ok\n", name);
+	}
+}
+
+static void
+crypto_probe(void)
+{
+	unsigned char md[64], key[32], buf[64], out[80];
+	size_t moved = 0;
+	const unsigned char hi[] = "Hi There";
+
+	CC_MD5("abc", 3, md);
+	crypto_check("md5", md, 16, "900150983cd24fb0d6963f7d28e17f72");
+	CC_SHA1("abc", 3, md);
+	crypto_check("sha1", md, 20, "a9993e364706816aba3e25717850c26c9cd0d89d");
+	CC_SHA224("abc", 3, md);
+	crypto_check("sha224", md, 28, "23097d223405d8228642a477bda255b32aadbce4bda0b3f7e36c9da7");
+	CC_SHA256("abc", 3, md);
+	crypto_check("sha256", md, 32, "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
+	CC_SHA384("abc", 3, md);
+	crypto_check("sha384", md, 48, "cb00753f45a35e8bb5a03d699ac65007272c32ab0eded1631a8b605a43ff5bed8086072ba1e7cc2358baeca134c825a7");
+	CC_SHA512("abc", 3, md);
+	crypto_check("sha512", md, 64, "ddaf35a193617abacc417349ae20413112e6fa4e89a97ea20a9eeee64b55d39a2192992a274fc1a836ba3c23a3feebbd454d4423643ce80e2a9ac94fa54ca49f");
+	{	/* streamed in two pieces, to exercise the context copying */
+		CC_SHA512_CTX c;
+
+		CC_SHA512_Init(&c);
+		CC_SHA512_Update(&c, "a", 1);
+		CC_SHA512_Update(&c, "bc", 2);
+		CC_SHA512_Final(md, &c);
+		crypto_check("sha512 streamed", md, 64, "ddaf35a193617abacc417349ae20413112e6fa4e89a97ea20a9eeee64b55d39a2192992a274fc1a836ba3c23a3feebbd454d4423643ce80e2a9ac94fa54ca49f");
+	}
+	memset(key, 0x0b, 20);
+	CCHmac(kCCHmacAlgSHA256, key, 20, hi, 8, md);
+	crypto_check("hmac-sha256", md, 32, "b0344c61d8db38535ca8afceaf0bf12b881dc200c9833da726e9376c2e32cff7");
+	CCHmac(kCCHmacAlgSHA1, key, 20, hi, 8, md);
+	crypto_check("hmac-sha1", md, 20, "b617318655057264e28bc0b6fb378c8ef146be00");
+	CCKeyDerivationPBKDF(kCCPBKDF2, "password", 8, (const uint8_t *)"salt", 4, kCCPRFHmacAlgSHA1, 1, md, 20);
+	crypto_check("pbkdf2-sha1", md, 20, "0c60c80f961f0e71f3a9b524af6012062fe037a6");
+	for (int i = 0; i < 16; i++) {
+		key[i] = (unsigned char)i;
+		buf[i] = (unsigned char)(i * 0x11);
+	}
+	CCCrypt(kCCEncrypt, kCCAlgorithmAES, kCCOptionECBMode, key, 16, NULL, buf, 16, out, sizeof(out), &moved);
+	crypto_check("aes128 ecb", out, 16, "69c4e0d86a7b0430d8cdb78070b4c55a");
+	{	/* CBC with PKCS#7 padding round trip */
+		unsigned char iv[16] = { 1, 2, 3 }, plain[21] = "twenty-one bytes long", back[48];
+		size_t m2 = 0;
+		CCCryptorStatus st = CCCrypt(kCCEncrypt, kCCAlgorithmAES, kCCOptionPKCS7Padding, key, 16, iv, plain, 21, out, sizeof(out), &moved);
+
+		st |= CCCrypt(kCCDecrypt, kCCAlgorithmAES, kCCOptionPKCS7Padding, key, 16, iv, out, moved, back, sizeof(back), &m2);
+		if (st == kCCSuccess && moved == 32 && m2 == 21 && !memcmp(back, plain, 21)) {
+			printf("semtest: crypto aes cbc roundtrip ok\n");
+		} else {
+			crypto_bad++;
+			printf("semtest: crypto aes cbc roundtrip FAIL st %d moved %zu %zu\n", st, moved, m2);
+		}
+	}
+	printf("semtest: crypto done %s\n", crypto_bad ? "FAILED" : "ALL-OK");
+}
+
 int main(int argc, char **argv)
 {
 	if (argc > 1 && !strcmp(argv[1], "bootstrap")) {
 		bootstrap_probe();
 		return 0;
+	}
+	if (argc > 1 && !strcmp(argv[1], "crypto")) {
+		crypto_probe();
+		return crypto_bad != 0;
 	}
 	if (argc > 1 && !strcmp(argv[1], "dns")) {
 		dns_probe();

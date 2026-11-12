@@ -127,5 +127,6 @@ jobs:
           grep -q "semtest: notify_register_check -> 0" build/qemu/uart1.log
           grep -q "semtest: notify_check after post -> 0 changed 1" build/qemu/uart1.log
           grep -q "semtest: getaddrinfo -> 0 10.1.2.3" build/qemu/uart1.log
+          grep -q "semtest: crypto done ALL-OK" build/qemu/uart1.log
           grep -q "semtest: message from child -> 0 id 4242 (child status 0)" build/qemu/uart1.log
           grep -q "uid=0(root)" build/qemu/uart1.log

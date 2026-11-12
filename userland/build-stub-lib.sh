@@ -4,6 +4,7 @@
 # They link against the SDK's stub libraries (our own, when already built) for libc and friends.
 #
 #   userland/build-stub-lib.sh OUTROOT NAME [INSTALL_DIR]      # INSTALL_DIR defaults to usr/lib/system
+# STUB_EXTRA_SRC / STUB_EXTRA_CFLAGS: more C files and compiler flags (libcommonCrypto adds BearSSL)
 set -eu
 HERE=$(cd "$(dirname "$0")" && pwd)
 mkdir -p "${1:?usage: $0 OUTROOT NAME [INSTALL_DIR]}"
@@ -21,4 +22,4 @@ xcrun clang -target arm64-apple-macos13.0 -mcpu=cortex-a72 -Os -g -isysroot "$SD
 	-Wno-error -dynamiclib -nostdlib \
 	-install_name "/$DIR/$NAME.dylib" $UMBRELLA -L"$OUTROOT/usr/lib/system" -L"$SDK/usr/lib/system" $LIBS \
 	-compatibility_version 1 -current_version 1 \
-	"$HERE/src/stubs/$NAME.c" -o "$OUTROOT/$DIR/$NAME.dylib"
+	${STUB_EXTRA_CFLAGS:-} "$HERE/src/stubs/$NAME.c" ${STUB_EXTRA_SRC:-} -o "$OUTROOT/$DIR/$NAME.dylib"

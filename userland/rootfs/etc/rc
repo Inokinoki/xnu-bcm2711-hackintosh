@@ -20,6 +20,8 @@ echo "rc: notify"
 semtest notify
 echo "rc: dns"
 semtest dns
+echo "rc: crypto"
+semtest crypto
 echo "rc: user lookup"
 id root
 ls -ld /var/root /etc/passwd
