@@ -8,7 +8,6 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <string.h>
-#include <stdlib.h>
 #include <Block.h>
 #include <mach/mach.h>
 #include "bootstrap_proto.h"
@@ -131,8 +130,11 @@ struct _xpc_event_publisher_s {
 struct _xpc_event_publisher_s *
 xpc_event_publisher_create(const char *name, void *queue)
 {
+	static struct _xpc_event_publisher_s pool[4];    /* no malloc in this library's link line */
+	static int used;
+
 	(void)name; (void)queue;
-	return calloc(1, sizeof(struct _xpc_event_publisher_s));
+	return used < 4 ? &pool[used++] : NULL;
 }
 
 void
