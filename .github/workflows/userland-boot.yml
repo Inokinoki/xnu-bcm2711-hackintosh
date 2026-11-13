@@ -68,6 +68,12 @@ jobs:
             tools/mkroot.sh build/root build/root.img
           fi
 
+      - uses: actions/upload-artifact@v4
+        with:
+          name: root-image
+          path: build/root.img
+          retention-days: 1
+
       - name: Boot on QEMU raspi4b
         id: boot
         continue-on-error: true
@@ -162,3 +168,89 @@ jobs:
           grep -q "semtest: crypto done ALL-OK" build/qemu-sd/uart1.log
           grep -q "semtest: notify_check after post -> 0 changed 1" build/qemu-sd/uart1.log
           grep -q "rc: sort ok" build/qemu-sd/uart1.log
+
+  # Stock QEMU fixes raspi4b at 2 GiB (its board revision), so the 4 GiB layout needs QEMU built with the 4 GiB
+  # revision (tools/qemu-4g.Dockerfile does the same in Docker). The build is cached.
+  boot-4g:
+    needs: boot
+    if: always() && needs.boot.result != 'skipped' && needs.boot.result != 'cancelled'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    permissions:
+      actions: read
+      contents: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      QEMU_VERSION: "10.1.0"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu build-essential ninja-build pkg-config python3-venv flex bison \
+            libglib2.0-dev libpixman-1-dev zlib1g-dev
+
+      - name: QEMU with a 4 GiB raspi4b (cached)
+        id: qemu-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/qemu-4g
+          key: qemu-4g-${{ env.QEMU_VERSION }}-c03115-v1
+
+      - name: Build QEMU
+        if: steps.qemu-cache.outputs.cache-hit != 'true'
+        run: |
+          curl -fL "https://download.qemu.org/qemu-$QEMU_VERSION.tar.xz" | tar xJ -C "$RUNNER_TEMP"
+          cd "$RUNNER_TEMP/qemu-$QEMU_VERSION"
+          # raspi4b: board revision c03115 = Pi 4B rev 1.5 with 4 GiB (upstream only has the 2 GiB b03115)
+          grep -n 0xb03115 hw/arm/raspi4b.c
+          sed -i 's/0xb03115/0xc03115/' hw/arm/raspi4b.c
+          ./configure --target-list=aarch64-softmmu --disable-docs --disable-tools --disable-guest-agent --disable-werror --prefix="$HOME/qemu-4g"
+          make -j"$(nproc)"
+          make install
+
+      - name: Kernel and root image
+        uses: actions/download-artifact@v4
+        with:
+          name: root-image
+          path: build/rootimg
+      - run: |
+          id=$(gh run list --workflow xnu-8796.141.3-bcm2711.yml --status success --limit 1 --json databaseId --jq '.[0].databaseId')
+          echo "kernel from run $id"
+          gh run download "$id" -n xnu-8796.141.3-bcm2711-kernel -D build/kernel
+          ls -l build/kernel build/rootimg
+
+      - name: Boot on QEMU raspi4b with 4 GiB
+        id: boot4g
+        continue-on-error: true
+        run: |
+          "$HOME/qemu-4g/bin/qemu-system-aarch64" --version | head -1
+          kernel=$(find build/kernel -maxdepth 1 -type f -name 'kernel.development.bcm2837' | head -1)
+          QEMU="$HOME/qemu-4g/bin/qemu-system-aarch64" CC=aarch64-linux-gnu-gcc RAMDISK=build/rootimg/root.img MEM=4G \
+            OUT=$PWD/build/qemu-4g tools/pi4-qemu-boot.sh "$kernel" 600
+
+      - name: Console log (4 GiB)
+        if: always()
+        run: |
+          tail -n 60 build/qemu-4g/uart1.log || true
+          grep -a -E "hw.memsize|panic|USERLAND-SELFTEST-OK" build/qemu-4g/uart1.log | head || true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: qemu-boot-log-4g
+          path: build/qemu-4g/uart1.log
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: 4 GiB boot result
+        run: |
+          grep -q "USERLAND-SELFTEST-OK" build/qemu-4g/uart1.log
+          grep -q "/dev/md0 on / (hfs" build/qemu-4g/uart1.log
+          grep -q "semtest: crypto done ALL-OK" build/qemu-4g/uart1.log
+          grep -q "semtest: notify_check after post -> 0 changed 1" build/qemu-4g/uart1.log
+          # the kernel's RAM window is 0x10000000-0xec000000 (3.44 GiB): hw.memsize must be well above the 2 GiB layout's
+          mem=$(grep -a -m1 "hw.memsize:" build/qemu-4g/uart1.log | awk '{print $2}')
+          echo "hw.memsize = $mem"
+          [ "${mem:-0}" -ge 3000000000 ]
