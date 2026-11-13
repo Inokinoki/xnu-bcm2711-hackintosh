@@ -40,8 +40,9 @@ Fork point: upstream `rootfs-ramdisk` (xnu-8796.141.3, HFS+ RAM disk root, SD ro
 - Patch 0039 fixed the earlier `kmem_range_init: vm_map_locate_space failing` panic above ~1 GiB: the macOS compressor
   pool is 16x RAM, which plus the 24 GiB zone map overflowed the 48 GiB kernel map.
 - Boot args now include `wdt=-1`: QEMU is slow enough to trip the interrupts-disabled watchdog otherwise.
-- **`-m 4G` needs a newer QEMU than 9.0.90**, which refuses it (`Invalid RAM size, should be 2 GiB`). The layout code
-  supports 1G/2G/4G/8G but only 2G has been run.
+- **4 GiB layout: boots on a patched QEMU** (`tools/qemu-4g.Dockerfile`; upstream `raspi4b` only accepts 2 GiB, also in 11.1).
+  It needed patch 0045: with 4K pages the 8 bootstrap page-table pages only cover a RAM window ending at or below 3 GiB.
+  Checked with the test PID 1 only; 1G and 8G have not been run.
 - **SD card root on `raspi4b`: works** (`rd=sdroot0`, userland-boot run 43499519728): the full userland boots read-write
   from a raw HFS+ card image on QEMU's EMMC controller (`0xfe300000`). Plan for real hardware: `docs/hardware-boot-plan.md`.
 - Real Pi 4 hardware: untested. Known open points: mini UART baud (kernel driver assumes `core_freq=250`),

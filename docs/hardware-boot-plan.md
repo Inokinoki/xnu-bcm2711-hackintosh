@@ -27,8 +27,12 @@ out of reach: WindowServer and the graphics stack are closed and need a GPU driv
    (`0x34`), so no command completed; patch 0044 drops the root authentication check, which panicked on any
    non-RAM-disk root. The raw HFS+ volume sits at sector 0 of the card: the driver has no partition table support,
    which item 1 needs (a FAT boot partition in front of the root).
-4. **Newer QEMU.** CI already runs QEMU 11.1 (Homebrew); the notes about 9.0.90 (no peripheral interrupts at the
-   GIC, `-m 4G` refused) come from an older local build and need re-checking there. Try `MEM=4G`.
+4. **4 GiB layout.** Done locally, not in CI. Upstream QEMU (checked up to 11.1.2) fixes `raspi4b` at 2 GiB through
+   its board revision, so `tools/qemu-4g.Dockerfile` builds QEMU 10.1.0 with the 4 GiB revision (`c03115`). With
+   `MEM=4G` (kernel window `0x10000000`-`0xec000000`, 3.44 GiB) the kernel printed nothing: the bootstrap page
+   tables (8 pages) only cover a window that ends at or below 3 GiB with 4K pages. Patch 0045 raises them to 20
+   pages; the kernel then boots to PID 1 with the test init. Not run: the full userland at 4 GiB, and 8 GiB
+   (the RAM above 4 GiB is a second region, which the single contiguous window does not use).
 
 ## Phase 1: first serial output on hardware (RAM-disk root)
 
