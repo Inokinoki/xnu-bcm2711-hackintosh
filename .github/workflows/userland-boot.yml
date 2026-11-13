@@ -251,6 +251,6 @@ jobs:
           grep -q "semtest: crypto done ALL-OK" build/qemu-4g/uart1.log
           grep -q "semtest: notify_check after post -> 0 changed 1" build/qemu-4g/uart1.log
           # the kernel's RAM window is 0x10000000-0xec000000 (3.44 GiB): hw.memsize must be well above the 2 GiB layout's
-          mem=$(grep -a -m1 "hw.memsize:" build/qemu-4g/uart1.log | awk '{print $2}')
+          mem=$(grep -a -m1 "hw.memsize:" build/qemu-4g/uart1.log | awk '{print $2}' | tr -d '\r')
           echo "hw.memsize = $mem"
           [ "${mem:-0}" -ge 3000000000 ]
