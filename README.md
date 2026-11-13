@@ -42,6 +42,8 @@ Fork point: upstream `rootfs-ramdisk` (xnu-8796.141.3, HFS+ RAM disk root, SD ro
 - Boot args now include `wdt=-1`: QEMU is slow enough to trip the interrupts-disabled watchdog otherwise.
 - **`-m 4G` needs a newer QEMU than 9.0.90**, which refuses it (`Invalid RAM size, should be 2 GiB`). The layout code
   supports 1G/2G/4G/8G but only 2G has been run.
+- **SD card root on `raspi4b`: works** (`rd=sdroot0`, userland-boot run 43499519728): the full userland boots read-write
+  from a raw HFS+ card image on QEMU's EMMC controller (`0xfe300000`). Plan for real hardware: `docs/hardware-boot-plan.md`.
 - Real Pi 4 hardware: untested. Known open points: mini UART baud (kernel driver assumes `core_freq=250`),
   SD slot is EMMC2 on hardware (`sdbase=0xfe340000` boot-arg; QEMU uses EMMC at `0xfe300000`), rng200 seed
   (loader built with `LOADER_CFLAGS=-DUSE_RNG200`; QEMU has no RNG so the default is a non-secure counter seed).

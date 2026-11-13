@@ -21,10 +21,14 @@ out of reach: WindowServer and the graphics stack are closed and need a GPU driv
    and publish it as an artifact.
 2. **Payload loading without QEMU's `-device loader`.** On hardware the firmware must place the payload. Use
    `initramfs payload.bin <address>` in `config.txt`, or append the payload to the loader image.
-3. **Boot the full userland with `rd=sdroot0` in QEMU.** Only the RAM-disk root is exercised in CI today. Check
-   whether the SD root driver copes with a partition table.
-4. **Newer QEMU in CI.** 9.0.90 delivers no peripheral interrupts to the GIC and refuses `-m 4G`. A newer version
-   would let the system-timer test show 5/5 and exercise the 4 GiB layout.
+3. **Boot the full userland with `rd=sdroot0` in QEMU.** Done (userland-boot run 43499519728): the boot job boots
+   the same root from an SD card image after the RAM-disk boot, read-write, through to `USERLAND-SELFTEST-OK`.
+   It needed two kernel fixes: patch 0038 enabled the SDHCI signal register (`0x38`) instead of the status register
+   (`0x34`), so no command completed; patch 0044 drops the root authentication check, which panicked on any
+   non-RAM-disk root. The raw HFS+ volume sits at sector 0 of the card: the driver has no partition table support,
+   which item 1 needs (a FAT boot partition in front of the root).
+4. **Newer QEMU.** CI already runs QEMU 11.1 (Homebrew); the notes about 9.0.90 (no peripheral interrupts at the
+   GIC, `-m 4G` refused) come from an older local build and need re-checking there. Try `MEM=4G`.
 
 ## Phase 1: first serial output on hardware (RAM-disk root)
 
