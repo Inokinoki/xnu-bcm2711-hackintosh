@@ -1,0 +1,18 @@
+diff --git a/osfmk/arm/pmap/pmap.h b/osfmk/arm/pmap/pmap.h
+--- a/osfmk/arm/pmap/pmap.h
++++ b/osfmk/arm/pmap/pmap.h
+@@ -111,6 +111,14 @@
+  * Upper limit on how many pages can be consumed by bootstrap page tables
+  */
+ #define BOOTSTRAP_TABLE_SIZE (ARM_PGBYTES * 34)
++#elif defined(ARM64_BOARD_CONFIG_BCM2837)
++/*
++ * BCM2837/BCM2711, 4K pages: start.s maps all of DRAM twice (V=P and KVA) with one L2 table per GiB
++ * touched. The stock 8 pages hold 2 L1 + 2*3 L2 tables, enough only while the kernel's RAM window ends
++ * at or below 3 GiB; past that the bootstrap tables overran this array (no console output at all).
++ * 2 L1 + 2*9 L2 tables cover a window of up to 8 GiB at any alignment.
++ */
++#define BOOTSTRAP_TABLE_SIZE (ARM_PGBYTES * 20)
+ #else /* defined(ARM_LARGE_MEMORY) */
+ #define BOOTSTRAP_TABLE_SIZE (ARM_PGBYTES * 8)
+ #endif /* defined(ARM_LARGE_MEMORY) */
