@@ -82,13 +82,14 @@ remount_root_rw(void)
 	} args;
 
 	memset(&args, 0, sizeof(args));
-	args.fspec = "/dev/md0";
+	/* the root is the RAM disk (rd=md0) or the SD card (rd=sdroot0); devfs has a node only for the one in use */
+	args.fspec = access("/dev/sdroot0", F_OK) == 0 ? "/dev/sdroot0" : "/dev/md0";
 	args.hfs_uid = (uid_t)-1;
 	args.hfs_gid = (gid_t)-1;
 	args.hfs_mask = (mode_t)-1;
 	args.hfs_encoding = (uint32_t)-1;
 	if (mount("hfs", "/", MNT_UPDATE, &args) == 0) {
-		printf("init: / is read-write\n");
+		printf("init: / is read-write (%s)\n", args.fspec);
 	} else {
 		printf("init: remounting / read-write failed: %s\n", strerror(errno));
 	}

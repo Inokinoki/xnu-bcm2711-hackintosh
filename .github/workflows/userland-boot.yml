@@ -108,16 +108,8 @@ jobs:
           size=$(stat -c %s build/sd.img); p=1; while [ "$p" -lt "$size" ]; do p=$((p * 2)); done
           truncate -s "$p" build/sd.img
           echo "SD image: $size bytes of HFS+ in a $p byte card"
-          # which SDHCI controller carries the card depends on the QEMU version: EMMC (0xfe300000, the driver's default)
-          # or, as on hardware, EMMC2 (0xfe340000). Probe each for 90 s, then do the full boot on the one that answers.
-          args="debug=0xc serial=3 cpus=1 wdt=-1 keepsyms=1 kt_fixed_zones=120 -noprogress rd=sdroot0"
-          for base in 0xfe300000 0xfe340000; do
-            CMDLINE="$args sdbase=$base" SDIMG=build/sd.img MEM=2G CC=aarch64-elf-gcc OUT=$PWD/build/qemu-sd tools/pi4-qemu-boot.sh "$kernel" 90
-            if grep -q "card init failed" build/qemu-sd/uart1.log; then echo "no card at sdbase=$base"; continue; fi
-            echo "card found at sdbase=$base"
-            CMDLINE="$args sdbase=$base" SDIMG=build/sd.img MEM=2G CC=aarch64-elf-gcc OUT=$PWD/build/qemu-sd tools/pi4-qemu-boot.sh "$kernel" 600
-            break
-          done
+          # QEMU raspi4b puts the card on the legacy EMMC controller (0xfe300000, the driver's default); hardware uses EMMC2
+          SDIMG=build/sd.img MEM=2G CC=aarch64-elf-gcc OUT=$PWD/build/qemu-sd tools/pi4-qemu-boot.sh "$kernel" 600
 
       - name: Console log (SD card boot)
         if: always()
@@ -165,7 +157,8 @@ jobs:
         if: always()
         run: |
           grep -q "USERLAND-SELFTEST-OK" build/qemu-sd/uart1.log
-          grep -q "sdroot0 on / (hfs" build/qemu-sd/uart1.log
+          grep -q "init: / is read-write (/dev/sdroot0)" build/qemu-sd/uart1.log
+          grep -q "sdroot0 on / (hfs, local)" build/qemu-sd/uart1.log
           grep -q "semtest: crypto done ALL-OK" build/qemu-sd/uart1.log
           grep -q "semtest: notify_check after post -> 0 changed 1" build/qemu-sd/uart1.log
           grep -q "rc: sort ok" build/qemu-sd/uart1.log
