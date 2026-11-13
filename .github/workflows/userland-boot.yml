@@ -1,7 +1,7 @@
 name: userland-boot
 
 # Boots the userland root (artifact of the latest successful userland-arm64 run) on QEMU raspi4b with the latest
-# kernel of the kernel workflow, as a RAM disk root. Runs after userland-arm64, and on its own when the image
+# kernel of the kernel workflow, first as a RAM disk root (rd=md0), then from an SD card image (rd=sdroot0). Runs after userland-arm64, and on its own when the image
 # builder, the boot script or the root skeleton change (so those can be iterated on without a 35 minute rebuild).
 
 on:
@@ -33,7 +33,7 @@ jobs:
   boot:
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: macos-15
-    timeout-minutes: 40
+    timeout-minutes: 60
     permissions:
       actions: read
       contents: read
@@ -97,6 +97,26 @@ jobs:
           echo "----- markers"
           grep -E "spawn:|init: |rc: |USERLAND-SELFTEST-OK|panic|dyld|Library not loaded|Symbol not found" build/qemu/uart1.log | head -60 || true
 
+      - name: Boot on QEMU raspi4b from the SD card (rd=sdroot0)
+        id: sdboot
+        continue-on-error: true
+        run: |
+          export PATH="$(brew --prefix coreutils)/libexec/gnubin:$PATH"
+          kernel=$(find build/kernel -maxdepth 1 -type f -name 'kernel.development.bcm2837' | head -1)
+          # QEMU wants a power-of-two SD card; the raw HFS+ volume sits at sector 0 (the driver exposes the whole card)
+          cp build/root.img build/sd.img
+          size=$(stat -c %s build/sd.img); p=1; while [ "$p" -lt "$size" ]; do p=$((p * 2)); done
+          truncate -s "$p" build/sd.img
+          echo "SD image: $size bytes of HFS+ in a $p byte card"
+          SDIMG=build/sd.img MEM=2G CC=aarch64-elf-gcc OUT=$PWD/build/qemu-sd tools/pi4-qemu-boot.sh "$kernel" 600
+
+      - name: Console log (SD card boot)
+        if: always()
+        run: |
+          tail -n 80 build/qemu-sd/uart1.log || true
+          echo "----- markers"
+          grep -E "BSD root|sdroot|SD:|init: |rc: |USERLAND-SELFTEST-OK|panic|hfs" build/qemu-sd/uart1.log | head -60 || true
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -104,6 +124,7 @@ jobs:
           path: |
             build/qemu/uart1.log
             build/qemu/el0-exceptions.log
+            build/qemu-sd/uart1.log
           if-no-files-found: warn
           retention-days: 14
 
@@ -130,3 +151,12 @@ jobs:
           grep -q "semtest: crypto done ALL-OK" build/qemu/uart1.log
           grep -q "semtest: message from child -> 0 id 4242 (child status 0)" build/qemu/uart1.log
           grep -q "uid=0(root)" build/qemu/uart1.log
+
+      - name: SD card boot result
+        if: always()
+        run: |
+          grep -q "USERLAND-SELFTEST-OK" build/qemu-sd/uart1.log
+          grep -q "sdroot0 on / (hfs" build/qemu-sd/uart1.log
+          grep -q "semtest: crypto done ALL-OK" build/qemu-sd/uart1.log
+          grep -q "semtest: notify_check after post -> 0 changed 1" build/qemu-sd/uart1.log
+          grep -q "rc: sort ok" build/qemu-sd/uart1.log
