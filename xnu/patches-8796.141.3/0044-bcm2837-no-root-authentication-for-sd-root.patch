@@ -1,0 +1,14 @@
+diff --git a/bsd/kern/bsd_init.c b/bsd/kern/bsd_init.c
+--- a/bsd/kern/bsd_init.c
++++ b/bsd/kern/bsd_init.c
+@@ -917,6 +917,10 @@
+ 		/* Non MacOS */
+ 		require_rootauth = TRUE;
+ #endif // XNU_TARGET_OS_OSX && defined(__arm64__)
++#if defined(ARM64_BOARD_CONFIG_BCM2837)
++		/* BCM2837/BCM2711: the SD card root (rd=sdroot0) is a plain HFS+ volume, there is no sealed system volume */
++		require_rootauth = FALSE;
++#endif
+ 
+ 		if (require_rootauth) {
+ 			/* enforce sealedness */

@@ -240,8 +240,8 @@ new file mode 100644
 +	if ((error = sd_set_clock(0x80u << 8))) {       /* about 400 kHz at the usual base clock */
 +		return error;
 +	}
-+	sd_wr(R_IRPT_EN, 0xffffffff);           /* status bits are polled, nothing is routed to the CPU */
-+	sd_wr(R_IRPT_MASK, 0);
++	sd_wr(R_IRPT_MASK, 0xffffffff);         /* 0x34, status enable: every status bit is latched (they are polled) */
++	sd_wr(R_IRPT_EN, 0);                    /* 0x38, signal enable: nothing is routed to the CPU */
 +	delay(2000);
 +
 +	sd.rca = 0;
