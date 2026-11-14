@@ -128,7 +128,8 @@ jobs:
           # the layout of the real card: MBR, FAT32 boot partition, HFS+ root as partition 2 (QEMU only reads partition 2)
           echo "placeholder" > build/placeholder.txt
           python3 tools/mksdimage.py build/sdpart.img --root build/root.img --boot config.txt=build/placeholder.txt --boot-size 64M --pad-pow2
-          SDIMG=build/sdpart.img SDPART=2 MEM=2G CC=aarch64-elf-gcc OUT=$PWD/build/qemu-sdpart tools/pi4-qemu-boot.sh "$kernel" 600
+          # MEM=HW: the layout of a real Pi 4 (RAM ends below the GPU memory hole), also what mksdcard.sh puts in config.txt
+          SDIMG=build/sdpart.img SDPART=2 MEM=HW CC=aarch64-elf-gcc OUT=$PWD/build/qemu-sdpart tools/pi4-qemu-boot.sh "$kernel" 600
 
       - name: Console log (partitioned SD card boot)
         if: always()
@@ -208,6 +209,7 @@ jobs:
         if: always()
         run: |
           grep -q "BCM2837 SD: partition 2 at sector" build/qemu-sdpart/uart1.log
+          grep -q "hw.memsize: 385875968" build/qemu-sdpart/uart1.log
           grep -q "USERLAND-SELFTEST-OK" build/qemu-sdpart/uart1.log
           grep -q "init: / is read-write (/dev/sdroot0)" build/qemu-sdpart/uart1.log
           grep -q "sdroot0 on / (hfs, local)" build/qemu-sdpart/uart1.log

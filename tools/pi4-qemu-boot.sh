@@ -7,6 +7,9 @@
 # peripheral window at 0xfc000000, the payload sits 256 MiB below the top of
 # that, and the kernel gets 0x10000000 up to the payload. QEMU 9.0 only accepts
 # -m 2G for raspi4b ("Invalid RAM size, should be 2 GiB"); 4G needs a newer QEMU.
+# MEM=HW is the layout for a real Pi 4 (run on QEMU with -m 2G): RAM ends at 688 MiB, below the GPU memory
+# hole the firmware reserves, and the payload sits only 64 MiB under that (the firmware places it with
+# `initramfs`; tools/mksdcard.sh writes the address from payload.pa).
 #
 # Needs an aarch64 gcc (CC, default aarch64-linux-gnu-gcc), qemu-system-aarch64
 # (QEMU, default qemu-system-aarch64) and python3. The mini UART (what the
@@ -21,9 +24,10 @@ OUT=${OUT:-$HERE/build/qemu-pi4}
 MEM=${MEM:-2G}
 case "$MEM" in
     1G) TOP=0x40000000 ;; 2G) TOP=0x80000000 ;; 4G|8G) TOP=0xfc000000 ;;
-    *) echo "MEM must be 1G, 2G, 4G or 8G"; exit 1 ;;
+    HW) TOP=0x2b000000; PAYLOAD_OFF=0x04000000; QEMU_M=${QEMU_M:-2G} ;;
+    *) echo "MEM must be 1G, 2G, 4G, 8G or HW"; exit 1 ;;
 esac
-PAYLOAD_PA=$((TOP - 0x10000000))
+PAYLOAD_PA=$((TOP - ${PAYLOAD_OFF:-0x10000000}))
 MEM_SIZE=${MEM_SIZE:-$((PAYLOAD_PA - 0x10000000))}
 mkdir -p "$OUT"
 

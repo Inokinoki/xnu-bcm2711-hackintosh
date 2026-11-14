@@ -17,16 +17,16 @@ out of reach: WindowServer and the graphics stack are closed and need a GPU driv
 
 ## Phase 0: preparation that needs no hardware
 
-1. **SD-card image in CI.** Written, boot of partition 2 pending CI. `tools/mksdimage.py` builds an MBR card: partition 1
+1. **SD-card image in CI.** Done (userland-boot run 43571146554). `tools/mksdimage.py` builds an MBR card: partition 1
    FAT32 with the firmware files (`start4.elf`, `fixup4.dat`, `bcm2711-rpi-4-b.dtb`), `config.txt`, `kernel8.img` (the
    loader) and `payload.bin`; partition 2 the HFS+ root. `tools/mksdcard.sh` assembles it from the loader and payload
    that `tools/pi4-qemu-boot.sh` leaves behind and downloads the firmware from raspberrypi/firmware. Patch 0046 adds
    the boot-arg `sdpart=N`, which exposes MBR partition N as `sdroot0`. The `boot` job of userland-boot boots that
-   layout on QEMU (`SDPART=2`) and publishes the card as the `pi4-sd-image` artifact. The FAT volume passes
+   layout on QEMU (`SDPART=2`, full userland read-write) and publishes the card as the `pi4-sd-image` artifact. The FAT volume passes
    `fsck.fat`; it has never been read by the Pi firmware.
 2. **Payload loading without QEMU's `-device loader`.** `config.txt` has `initramfs payload.bin <PAYLOAD_PA>`, so the
-   firmware places the payload where the loader expects it. The address is the 2 GiB layout's (`0x70000000`); on
-   hardware it must also stay out of the GPU memory hole (phase 1, item 2). Untested.
+   firmware places the payload where the loader expects it. The address comes from `payload.pa`; on
+   hardware the card uses the `MEM=HW` layout (`0x27000000`, below the GPU memory hole; phase 1, item 2). Untested.
 3. **Boot the full userland with `rd=sdroot0` in QEMU.** Done (userland-boot run 43499519728): the boot job boots
    the same root from an SD card image after the RAM-disk boot, read-write, through to `USERLAND-SELFTEST-OK`.
    It needed two kernel fixes: patch 0038 enabled the SDHCI signal register (`0x38`) instead of the status register
@@ -50,9 +50,11 @@ until tried on a board.
    over in non-secure EL2, where group 0 is not reachable. Recommended: install our loader as the `armstub=` so it
    starts in EL3, and keep the kernel in secure EL1; that matches the register layout the driver already assumes.
    Fallback: move the timer to the IRQ path in the kernel.
-2. **GPU memory hole.** The firmware reserves the top of the first 1 GiB for the VideoCore. The kernel's RAM window
-   currently runs contiguously from `0x10000000`, so it would overlap. For the first boot, cap the window below the
-   hole (about 690 MiB); later, read the real memory map from the firmware.
+2. **GPU memory hole.** The firmware reserves the top of the first 1 GiB for the VideoCore, and the 2 GiB layout's RAM
+   window would overlap it. `MEM=HW` (`tools/pi4-qemu-boot.sh`) is the hardware-safe layout: RAM `0x10000000`-
+   `0x27000000` (368 MiB, `hw.memsize` 385875968), payload at `0x27000000`, RAM ends at 688 MiB. It boots the full
+   userland on QEMU (local run), and the SD card image from `tools/mksdcard.sh` uses it. Later, read the real
+   memory map from the firmware to use more RAM.
 3. **Mini UART baud.** The driver assumes a 250 MHz core clock. Set `enable_uart=1` and verify the divisor on the
    wire.
 4. **RNG.** Build the loader with `LOADER_CFLAGS=-DUSE_RNG200` instead of the counter seed.
