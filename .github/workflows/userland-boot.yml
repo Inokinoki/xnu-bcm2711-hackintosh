@@ -20,6 +20,8 @@ on:
       - "tools/mkroot.sh"
       - "tools/pi4-qemu-boot.sh"
       - "tools/mkpi_payload.py"
+      - "tools/mksdimage.py"
+      - "tools/mksdcard.sh"
       - "tools/pi-spawn.S"
       - "tools/mkpi-init.sh"
       - "userland/rootfs/**"
@@ -117,6 +119,38 @@ jobs:
           # QEMU raspi4b puts the card on the legacy EMMC controller (0xfe300000, the driver's default); hardware uses EMMC2
           SDIMG=build/sd.img MEM=2G CC=aarch64-elf-gcc OUT=$PWD/build/qemu-sd tools/pi4-qemu-boot.sh "$kernel" 600
 
+      - name: Boot on QEMU raspi4b from a partitioned SD card (sdpart=2)
+        id: sdpartboot
+        continue-on-error: true
+        run: |
+          export PATH="$(brew --prefix coreutils)/libexec/gnubin:$PATH"
+          kernel=$(find build/kernel -maxdepth 1 -type f -name 'kernel.development.bcm2837' | head -1)
+          # the layout of the real card: MBR, FAT32 boot partition, HFS+ root as partition 2 (QEMU only reads partition 2)
+          echo "placeholder" > build/placeholder.txt
+          python3 tools/mksdimage.py build/sdpart.img --root build/root.img --boot config.txt=build/placeholder.txt --boot-size 64M --pad-pow2
+          SDIMG=build/sdpart.img SDPART=2 MEM=2G CC=aarch64-elf-gcc OUT=$PWD/build/qemu-sdpart tools/pi4-qemu-boot.sh "$kernel" 600
+
+      - name: Console log (partitioned SD card boot)
+        if: always()
+        run: |
+          tail -n 40 build/qemu-sdpart/uart1.log || true
+          grep -E "BSD root|SD:|init: |USERLAND-SELFTEST-OK|panic|hfs" build/qemu-sdpart/uart1.log | head -40 || true
+
+      - name: Assemble the Raspberry Pi 4 SD card image
+        if: steps.sdpartboot.outcome == 'success'
+        run: |
+          export PATH="$(brew --prefix coreutils)/libexec/gnubin:$PATH"
+          OBJCOPY=aarch64-elf-objcopy tools/mksdcard.sh build/pi4-sd.img build/root.img build/qemu-sdpart
+          gzip -f build/pi4-sd.img
+          ls -l build/pi4-sd.img.gz
+
+      - uses: actions/upload-artifact@v4
+        if: steps.sdpartboot.outcome == 'success'
+        with:
+          name: pi4-sd-image
+          path: build/pi4-sd.img.gz
+          retention-days: 14
+
       - name: Console log (SD card boot)
         if: always()
         run: |
@@ -132,6 +166,7 @@ jobs:
             build/qemu/uart1.log
             build/qemu/el0-exceptions.log
             build/qemu-sd/uart1.log
+            build/qemu-sdpart/uart1.log
           if-no-files-found: warn
           retention-days: 14
 
@@ -168,6 +203,15 @@ jobs:
           grep -q "semtest: crypto done ALL-OK" build/qemu-sd/uart1.log
           grep -q "semtest: notify_check after post -> 0 changed 1" build/qemu-sd/uart1.log
           grep -q "rc: sort ok" build/qemu-sd/uart1.log
+
+      - name: Partitioned SD card boot result
+        if: always()
+        run: |
+          grep -q "BCM2837 SD: partition 2 at sector" build/qemu-sdpart/uart1.log
+          grep -q "USERLAND-SELFTEST-OK" build/qemu-sdpart/uart1.log
+          grep -q "init: / is read-write (/dev/sdroot0)" build/qemu-sdpart/uart1.log
+          grep -q "sdroot0 on / (hfs, local)" build/qemu-sdpart/uart1.log
+          grep -q "semtest: crypto done ALL-OK" build/qemu-sdpart/uart1.log
 
   # Stock QEMU fixes raspi4b at 2 GiB (its board revision), so the 4 GiB layout needs QEMU built with the 4 GiB
   # revision (tools/qemu-4g.Dockerfile does the same in Docker). The build is cached.

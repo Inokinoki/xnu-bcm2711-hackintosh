@@ -35,7 +35,8 @@ $CC -nostdlib -static -T "$HERE/loader/link.ld" -o "$OUT/loader.elf" "$OUT/start
 
 # 2. payload: the kernel's segments + ADT + command line, placed at PAYLOAD_PA
 # RAMDISK=image makes the payload carry a RAM disk root (boot-arg rd=md0);
-# SDIMG=image attaches it as the SD card (a power-of-two size) and roots on it (rd=sdroot0).
+# SDIMG=image attaches it as the SD card (a power-of-two size) and roots on it (rd=sdroot0); with SDPART=N
+# the root is MBR partition N of the card (boot-arg sdpart=N) instead of the whole card.
 # CMDLINE overrides the default boot-args.
 set -- "$KERNEL" "$OUT/payload.bin" --mem-size "$MEM_SIZE"
 if [ -n "${RAMDISK:-}" ]; then
@@ -43,7 +44,7 @@ if [ -n "${RAMDISK:-}" ]; then
     : "${CMDLINE:=debug=0xc serial=3 cpus=1 wdt=-1 keepsyms=1 kt_fixed_zones=120 -noprogress rd=md0}"
 fi
 if [ -n "${SDIMG:-}" ]; then
-    : "${CMDLINE:=debug=0xc serial=3 cpus=1 wdt=-1 keepsyms=1 kt_fixed_zones=120 -noprogress rd=sdroot0}"
+    : "${CMDLINE:=debug=0xc serial=3 cpus=1 wdt=-1 keepsyms=1 kt_fixed_zones=120 -noprogress rd=sdroot0${SDPART:+ sdpart=$SDPART}}"
 fi
 [ -n "${CMDLINE:-}" ] && set -- "$@" --cmdline "$CMDLINE"
 python3 "$HERE/tools/mkpi_payload.py" "$@"

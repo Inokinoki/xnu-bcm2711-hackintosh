@@ -1,0 +1,71 @@
+diff --git a/bsd/dev/bcm2837_sd.c b/bsd/dev/bcm2837_sd.c
+--- a/bsd/dev/bcm2837_sd.c
++++ b/bsd/dev/bcm2837_sd.c
+@@ -80,7 +80,8 @@
+ 	vm_offset_t regs;
+ 	uint32_t rca;
+ 	bool sdhc;
+-	uint64_t nblocks;
++	uint64_t nblocks;       /* sectors exposed as sdroot0 (the card, or the selected partition) */
++	uint64_t base;          /* first card sector of sdroot0 (0, or the partition start) */
+ 	int bmajor, cmajor;
+ 	dev_t bdev;
+ 	bool ready;
+@@ -339,7 +340,7 @@
+ 	lck_mtx_lock(&bcm2837_sd_lock);
+ 	for (uint32_t done = 0; done < count;) {
+ 		uint32_t n = MIN((count - done) / SECSIZE, MAX_BLOCKS);
+-		error = sd_xfer(off / SECSIZE + done / SECSIZE, n, (uint8_t *)vaddr + done, write);
++		error = sd_xfer(sd.base + off / SECSIZE + done / SECSIZE, n, (uint8_t *)vaddr + done, write);
+ 		if (error) {
+ 			break;
+ 		}
+@@ -445,6 +446,33 @@
+ 	.d_type       = D_DISK,
+ };
+ 
++/*
++ * sdpart=N (1-4) exposes the Nth MBR primary partition as sdroot0 instead of the whole card,
++ * so the card can carry a FAT boot partition for the Pi firmware in front of the root.
++ */
++static int
++sd_select_partition(uint32_t part)
++{
++	uint8_t mbr[SECSIZE];
++	int error = sd_xfer(0, 1, mbr, false);
++	if (error) {
++		return error;
++	}
++	if (mbr[510] != 0x55 || mbr[511] != 0xaa) {
++		return ENXIO;
++	}
++	const uint8_t *e = mbr + 446 + 16 * (part - 1);
++	uint32_t start, count;
++	memcpy(&start, e + 8, 4);       /* little-endian LBA, arm64 is little-endian too */
++	memcpy(&count, e + 12, 4);
++	if (e[4] == 0 || count == 0 || start == 0 || (uint64_t)start + count > sd.nblocks) {
++		return ENXIO;
++	}
++	sd.base = start;
++	sd.nblocks = count;
++	return 0;
++}
++
+ static int
+ bcm2837_sd_init(void)
+ {
+@@ -463,6 +491,14 @@
+ 		printf("BCM2837 SD: card init failed: %d\n", error);
+ 		return error;
+ 	}
++	uint32_t part = 0;
++	if (PE_parse_boot_argn("sdpart", &part, sizeof(part)) && part) {
++		if (part > 4 || (error = sd_select_partition(part))) {
++			printf("BCM2837 SD: partition %u unavailable (%d)\n", part, error ? error : EINVAL);
++			return error ? error : EINVAL;
++		}
++		printf("BCM2837 SD: partition %u at sector %llu, %llu sectors\n", part, sd.base, sd.nblocks);
++	}
+ 	sd.bmajor = bdevsw_add(-1, &bcm2837_sd_bdevsw);
+ 	if (sd.bmajor < 0) {
+ 		return ENXIO;

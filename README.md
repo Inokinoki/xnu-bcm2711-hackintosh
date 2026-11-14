@@ -45,6 +45,9 @@ Fork point: upstream `rootfs-ramdisk` (xnu-8796.141.3, HFS+ RAM disk root, SD ro
   cover a RAM window ending at or below 3 GiB. The full userland runs at `hw.memsize` 3.44 GiB; 1G and 8G have not been run.
 - **SD card root on `raspi4b`: works** (`rd=sdroot0`, userland-boot run 43499519728): the full userland boots read-write
   from a raw HFS+ card image on QEMU's EMMC controller (`0xfe300000`). Plan for real hardware: `docs/hardware-boot-plan.md`.
+- **Pi 4 SD card image** (`tools/mksdimage.py`, `tools/mksdcard.sh`; CI artifact `pi4-sd-image`): MBR with a FAT32 boot
+  partition (firmware, `config.txt`, loader as `kernel8.img`, `payload.bin`) and the HFS+ root as partition 2 (`sdpart=2`,
+  patch 0046). Layout checked with `fsck.fat` and a QEMU boot of partition 2; never read by the Pi firmware.
 - Real Pi 4 hardware: untested. Known open points: mini UART baud (kernel driver assumes `core_freq=250`),
   SD slot is EMMC2 on hardware (`sdbase=0xfe340000` boot-arg; QEMU uses EMMC at `0xfe300000`), rng200 seed
   (loader built with `LOADER_CFLAGS=-DUSE_RNG200`; QEMU has no RNG so the default is a non-secure counter seed).

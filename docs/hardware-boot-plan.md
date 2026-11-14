@@ -17,10 +17,16 @@ out of reach: WindowServer and the graphics stack are closed and need a GPU driv
 
 ## Phase 0: preparation that needs no hardware
 
-1. **SD-card image in CI.** Build a FAT boot partition (Pi firmware, `config.txt`, loader, payload) plus the root,
-   and publish it as an artifact.
-2. **Payload loading without QEMU's `-device loader`.** On hardware the firmware must place the payload. Use
-   `initramfs payload.bin <address>` in `config.txt`, or append the payload to the loader image.
+1. **SD-card image in CI.** Written, boot of partition 2 pending CI. `tools/mksdimage.py` builds an MBR card: partition 1
+   FAT32 with the firmware files (`start4.elf`, `fixup4.dat`, `bcm2711-rpi-4-b.dtb`), `config.txt`, `kernel8.img` (the
+   loader) and `payload.bin`; partition 2 the HFS+ root. `tools/mksdcard.sh` assembles it from the loader and payload
+   that `tools/pi4-qemu-boot.sh` leaves behind and downloads the firmware from raspberrypi/firmware. Patch 0046 adds
+   the boot-arg `sdpart=N`, which exposes MBR partition N as `sdroot0`. The `boot` job of userland-boot boots that
+   layout on QEMU (`SDPART=2`) and publishes the card as the `pi4-sd-image` artifact. The FAT volume passes
+   `fsck.fat`; it has never been read by the Pi firmware.
+2. **Payload loading without QEMU's `-device loader`.** `config.txt` has `initramfs payload.bin <PAYLOAD_PA>`, so the
+   firmware places the payload where the loader expects it. The address is the 2 GiB layout's (`0x70000000`); on
+   hardware it must also stay out of the GPU memory hole (phase 1, item 2). Untested.
 3. **Boot the full userland with `rd=sdroot0` in QEMU.** Done (userland-boot run 43499519728): the boot job boots
    the same root from an SD card image after the RAM-disk boot, read-write, through to `USERLAND-SELFTEST-OK`.
    It needed two kernel fixes: patch 0038 enabled the SDHCI signal register (`0x38`) instead of the status register
