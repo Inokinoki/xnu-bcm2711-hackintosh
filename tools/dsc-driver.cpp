@@ -5,7 +5,7 @@
 //   dsc_driver OUTDIR ROOT LISTFILE [ARCH]
 //
 // LISTFILE has one install path per line (e.g. /usr/lib/libSystem.B.dylib); each is read from ROOT/<path> and given to
-// the builder as a macOS dylib that must be in the cache. Everything the builder produces (the cache, its
+// the builder as a macOS dylib that must be in the cache; a line "exe PATH" adds an executable instead. Everything the builder produces (the cache, its
 // sub-caches, .map, .symbols) is written to OUTDIR under its base name.
 #include <stdio.h>
 #include <stdlib.h>
@@ -71,11 +71,17 @@ int main(int argc, const char* argv[])
             continue;
         auto* data = new std::vector<uint8_t>();
         keep.push_back(data);
+        FileFlags flags = MustBeInCache;
+        if ( line.compare(0, 4, "exe ") == 0 ) {
+            line = line.substr(4);
+            flags = NoFlags;
+        }
         if ( !readFile(root + line, *data) ) {
             fprintf(stderr, "cannot read %s%s\n", root.c_str(), line.c_str());
             continue;
         }
-        if ( addFile(b, line.c_str(), data->data(), data->size(), MustBeInCache) )
+        // lines "exe /usr/bin/x" are executables (the builder wants a main executable to build cache loaders against)
+        if ( addFile(b, line.c_str(), data->data(), data->size(), flags) )
             ++added;
         else
             fprintf(stderr, "addFile rejected %s\n", line.c_str());

@@ -95,6 +95,10 @@ jobs:
             name=$(otool -D "build/root/$f" | tail -1)
             if [ "$name" = "/$f" ]; then echo "/$f"; else echo "skip /$f (install name $name)" >&2; fi
           done > build/dylibs.txt
+          # executables the cache builds loaders for (it needs at least one main executable under /usr/bin)
+          (cd build/root && for d in bin usr/bin sbin usr/sbin; do [ -d "$d" ] && find "$d" -type f; done | sort) | while read -r f; do
+            if file "build/root/$f" | grep -q "Mach-O 64-bit executable arm64"; then echo "exe /$f"; fi
+          done >> build/dylibs.txt
           wc -l build/dylibs.txt
           cat build/dylibs.txt
 
