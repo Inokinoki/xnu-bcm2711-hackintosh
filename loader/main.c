@@ -246,6 +246,7 @@ static int fb_init(uint64_t *base, uint32_t *pitch)
 		0x00048003, 8, 0, FB_WIDTH, FB_HEIGHT,	/* physical width, height */
 		0x00048004, 8, 0, FB_WIDTH, FB_HEIGHT,	/* virtual width, height */
 		0x00048005, 4, 0, 32,			/* depth */
+		0x00048006, 4, 0, 0,			/* pixel order BGR: a pixel word is 0x00RRGGBB */
 		0x00040001, 8, 0, 16, 0,		/* allocate: alignment in, base and size out */
 		0x00040008, 4, 0, 0,			/* pitch */
 		0,
@@ -256,7 +257,7 @@ static int fb_init(uint64_t *base, uint32_t *pitch)
 	mbox_msg[0] = n * 4;
 	if (!mbox_call())
 		return 0;
-	uint32_t bus = mbox_msg[19], pit = mbox_msg[24];	/* alloc response and pitch value words */
+	uint32_t bus = mbox_msg[23], pit = mbox_msg[28];	/* alloc response and pitch value words */
 	if (!bus || !pit || mbox_msg[15] != 32)
 		return 0;
 	*base = bus & 0x3fffffffu;
