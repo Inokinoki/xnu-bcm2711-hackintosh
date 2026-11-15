@@ -16,7 +16,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Fetch dyld
-        run: python3 -I userland/fetch-sources.py build/dyld-src dyld libplatform Libc
+        run: python3 -I userland/fetch-sources.py build/dyld-src dyld libplatform Libc xnu
 
       - name: Build dyld_shared_cache_builder
         id: build
@@ -34,6 +34,11 @@ jobs:
             f=$(find "$SRCS/libplatform" "$SRCS/Libc" -name "$h" 2>/dev/null | head -1)
             [ -z "$f" ] || INC="$INC -idirafter $(dirname "$f")"
           done
+          for d in libkern EXTERNAL_HEADERS bsd osfmk; do INC="$INC -idirafter $SRCS/xnu/$d"; done
+          BR="-D__API_AVAILABLE_PLATFORM_bridgeos(x)=bridgeos,introduced=x -D__API_UNAVAILABLE_PLATFORM_bridgeos=bridgeos,unavailable"
+          INC="$INC $BR"
+          # the stock tool needs the closed Bom framework: swap in our driver around the MRM interface
+          cp "$GITHUB_WORKSPACE/tools/dsc-driver.cpp" cache-builder/dyld_shared_cache_builder.mm
           echo "include flags: $INC"
           SDKP=$(xcrun --sdk macosx --show-sdk-path)
           xcodebuild build -sdk macosx -target dyld_shared_cache_builder SDKROOT=macosx ARM_SDK="$SDKP" \
