@@ -41,6 +41,7 @@ jobs:
             ln -sfn "$SRCS/xnu/${pair#*:}" "$GITHUB_WORKSPACE/build/sysinc/System/${pair%%:*}"
           done
           INC="$INC -idirafter $GITHUB_WORKSPACE/build/sysinc"
+          INC="$INC -idirafter $GITHUB_WORKSPACE/tools/dsc-shim"
           # the PrebuiltLoader hash script runs its own clang++: give it the same private header paths
           sed -i '' 's|-Ilsl \${DERIVED_FILE_DIR}|-Ilsl ${DYLD_EXTRA_INC} ${DERIVED_FILE_DIR}|' build-scripts/prebuilt-loader-hash.sh
           grep -q DYLD_EXTRA_INC build-scripts/prebuilt-loader-hash.sh
