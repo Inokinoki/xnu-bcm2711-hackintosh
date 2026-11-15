@@ -27,7 +27,9 @@ git -C "$WORK/llvm-project" log -1 --format="llvm-project %H"
 
 # the builtins (__divti3 ...) are hidden in libcompiler_rt.dylib: link them in statically
 RT=$(xcrun clang -print-resource-dir)/lib/darwin/libclang_rt.osx.a
-LDF="-nostdlib -L$STAGE -L$OUT/usr/lib/system"
+# -add_split_seg_info: LC_SEGMENT_SPLIT_INFO, which dyld's shared cache builder requires of every cached dylib
+# (the new linker leaves it out by default)
+LDF="-nostdlib -L$STAGE -L$OUT/usr/lib/system -Wl,-add_split_seg_info"
 cmake -S "$WORK/llvm-project/runtimes" -B "$WORK/llvm-build" -G Ninja \
 	-DCMAKE_BUILD_TYPE=Release \
 	-DCMAKE_C_COMPILER="$(xcrun -f clang)" -DCMAKE_CXX_COMPILER="$(xcrun -f clang++)" \
