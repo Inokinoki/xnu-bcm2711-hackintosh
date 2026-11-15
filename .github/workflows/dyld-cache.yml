@@ -30,7 +30,7 @@ jobs:
           (grep -rl 'BSD.xcconfig' . --include='*.xcconfig' | while read -r f; do sed -i '' '/BSD.xcconfig/d' "$f"; done) || true
           SRCS=$GITHUB_WORKSPACE/build/dyld-src
           INC="-idirafter $PWD/include -idirafter $GITHUB_WORKSPACE/userland/include-dyld"
-          for h in _simple.h CrashReporterClient.h; do
+          for h in _simple.h CrashReporterClient.h libc_private.h subsystem.h; do
             f=$(find "$SRCS/libplatform" "$SRCS/Libc" -name "$h" 2>/dev/null | head -1)
             [ -z "$f" ] || INC="$INC -idirafter $(dirname "$f")"
           done
@@ -40,7 +40,11 @@ jobs:
           for pair in sys:bsd/sys machine:bsd/machine kern:bsd/kern uuid:bsd/uuid mach:osfmk/mach libkern:libkern; do
             ln -sfn "$SRCS/xnu/${pair#*:}" "$GITHUB_WORKSPACE/build/sysinc/System/${pair%%:*}"
           done
-          INC="$INC -idirafter $GITHUB_WORKSPACE/build/sysinc"
+          f=$(find "$SRCS/Libc" -name atexit.h | head -1); [ -z "$f" ] || ln -sfn "$f" "$GITHUB_WORKSPACE/build/sysinc/System/atexit.h"
+          # second System/ root: <System/machine/cpu_capabilities.h> lives in osfmk
+          mkdir -p "$GITHUB_WORKSPACE/build/sysinc2/System"
+          ln -sfn "$SRCS/xnu/osfmk/machine" "$GITHUB_WORKSPACE/build/sysinc2/System/machine"
+          INC="$INC -idirafter $GITHUB_WORKSPACE/build/sysinc -idirafter $GITHUB_WORKSPACE/build/sysinc2 -idirafter $GITHUB_WORKSPACE/userland/include"
           INC="$INC -idirafter $GITHUB_WORKSPACE/tools/dsc-shim"
           # the PrebuiltLoader hash script runs its own clang++: give it the same private header paths
           sed -i '' 's|-Ilsl \${DERIVED_FILE_DIR}|-Ilsl ${DYLD_EXTRA_INC} ${DERIVED_FILE_DIR}|' build-scripts/prebuilt-loader-hash.sh
