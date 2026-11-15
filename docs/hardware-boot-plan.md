@@ -70,8 +70,11 @@ Done when the serial console shows the same `rc:` and `semtest:` lines as the CI
 
 ## Phase 3: make it usable
 
-- **HDMI text console:** ask the firmware for a framebuffer over the mailbox and pass it in `boot_args`. Cheap, and
-  removes the need for a serial cable.
+- **HDMI text console:** done on QEMU. The loader asks the firmware for a 1024x768x32 framebuffer over the mailbox
+  and passes it in `boot_args.Video`; patch 0047 turns on the kernel's video console and mirrors the serial console
+  on it. A screendump of the partitioned SD boot (`SHOT=` in `tools/pi4-qemu-boot.sh`) shows the log and the shell
+  prompt; CI keeps it as `build/screen.ppm` in the `qemu-boot-log` artifact. Not tried on hardware: the real
+  firmware's framebuffer address and pixel order are assumptions.
 - **Peripheral interrupts:** confirm the system timer shows 5/5 from hardware, then make the UART interrupt-driven.
 - **Missing commands:** `reboot`/`halt` (needs the watchdog reset), `login`/`getty`, `hostinfo`, `arch`.
 - **SMP:** bring up secondary CPUs and IPIs through the GIC.
