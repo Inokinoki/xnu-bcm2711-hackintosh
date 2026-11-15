@@ -1,0 +1,35 @@
+diff --git a/osfmk/arm/arm_init.c b/osfmk/arm/arm_init.c
+--- a/osfmk/arm/arm_init.c
++++ b/osfmk/arm/arm_init.c
+@@ -569,6 +569,15 @@
+ 		disableConsoleOutput = FALSE;     /* Allow printfs to happen */
+ 	}
+ 	PE_create_console();
++#if defined(ARM64_BOARD_CONFIG_BCM2837)
++	/*
++	 * The loader may have set up a framebuffer (boot_args.Video, text mode): turn the video
++	 * console on. Output keeps going to the serial console, and _cnputc mirrors it to the screen.
++	 */
++	if (PE_state.video.v_baseAddr != 0) {
++		initialize_screen(NULL, kPEAcquireScreen);
++	}
++#endif
+ 
+ 	/* setup console output */
+ 	PE_init_printf(FALSE);
+diff --git a/osfmk/console/serial_console.c b/osfmk/console/serial_console.c
+--- a/osfmk/console/serial_console.c
++++ b/osfmk/console/serial_console.c
+@@ -255,6 +255,12 @@
+ 	}
+ 
+ 	cons_ops[idx].putc(c, poll);
++#if defined(ARM64_BOARD_CONFIG_BCM2837)
++	if (idx == SERIAL_CONS_OPS && !in_debugger) {
++		/* mirror the serial console on the framebuffer; a no-op until the video console is enabled */
++		vcputc_options(c, poll);
++	}
++#endif
+ }
+ 
+ /**

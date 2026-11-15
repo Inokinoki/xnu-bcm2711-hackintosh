@@ -206,6 +206,64 @@ static void gic_init(void)
 	mmio_w(GICC_CTLR, 1 | (1u << 3));		/* enable group 0, signal it as FIQ */
 }
 
+/*
+ * Framebuffer through the firmware mailbox (property channel 8), as Linux's simplefb gets it.
+ * QEMU raspi4b implements the same interface (bcm2835_property + bcm2835_fb). The returned
+ * address is a GPU bus address; the ARM physical address is its low 30 bits.
+ */
+#define MBOX_BASE	(MMIO_BASE + 0xb880)
+#define MBOX_READ	(MBOX_BASE + 0x00)
+#define MBOX_STATUS0	(MBOX_BASE + 0x18)
+#define MBOX_WRITE	(MBOX_BASE + 0x20)
+#define MBOX_STATUS1	(MBOX_BASE + 0x38)
+#define FB_WIDTH	1024
+#define FB_HEIGHT	768
+
+static volatile uint32_t mbox_msg[32] __attribute__((aligned(16)));
+
+static int mbox_call(void)
+{
+	uint32_t addr = ((uint32_t)(uintptr_t)mbox_msg & ~0xfu) | 0xc0000000u | 8;
+	for (int i = 0; mmio_r(MBOX_STATUS1) & 0x80000000u; i++)
+		if (i > 1000000)
+			return 0;
+	mmio_w(MBOX_WRITE, addr);
+	for (int i = 0; i < 1000000; i++) {
+		if (mmio_r(MBOX_STATUS0) & 0x40000000u)
+			continue;
+		uint32_t r = mmio_r(MBOX_READ);
+		if (r == addr)
+			return mbox_msg[1] == 0x80000000u;
+	}
+	return 0;
+}
+
+/* Returns 1 and fills base (physical), pitch, w, h when the firmware gave a 32 bpp framebuffer. */
+static int fb_init(uint64_t *base, uint32_t *pitch)
+{
+	static const uint32_t req[] = {
+		0, 0,
+		0x00048003, 8, 0, FB_WIDTH, FB_HEIGHT,	/* physical width, height */
+		0x00048004, 8, 0, FB_WIDTH, FB_HEIGHT,	/* virtual width, height */
+		0x00048005, 4, 0, 32,			/* depth */
+		0x00040001, 8, 0, 16, 0,		/* allocate: alignment in, base and size out */
+		0x00040008, 4, 0, 0,			/* pitch */
+		0,
+	};
+	int n = sizeof(req) / sizeof(req[0]);
+	for (int i = 0; i < n; i++)
+		mbox_msg[i] = req[i];
+	mbox_msg[0] = n * 4;
+	if (!mbox_call())
+		return 0;
+	uint32_t bus = mbox_msg[19], pit = mbox_msg[24];	/* alloc response and pitch value words */
+	if (!bus || !pit || mbox_msg[15] != 32)
+		return 0;
+	*base = bus & 0x3fffffffu;
+	*pitch = pit;
+	return 1;
+}
+
 typedef void (*kernel_entry_t)(uint64_t boot_args_pa);
 
 void loader_main(uint64_t dtb)
@@ -258,7 +316,22 @@ void loader_main(uint64_t dtb)
 	ba->physBase = p->phys_base;
 	ba->memSize = p->mem_size;
 	ba->topOfKernelData = top;
-	ba->Video.v_display = 0;		/* no framebuffer on this path yet */
+	ba->Video.v_display = 0;		/* 0 = text mode: the kernel prints its console on the framebuffer */
+	{
+		uint64_t fb;
+		uint32_t pitch;
+		if (fb_init(&fb, &pitch)) {
+			ba->Video.v_baseAddr = fb;
+			ba->Video.v_rowBytes = pitch;
+			ba->Video.v_width = FB_WIDTH;
+			ba->Video.v_height = FB_HEIGHT;
+			ba->Video.v_depth = 32;
+			uart_line("framebuffer", fb);
+			uart_line("fb_pitch", pitch);
+		} else {
+			uart_puts("[loader] no framebuffer from the firmware\n");
+		}
+	}
 	ba->machineType = 0;
 	ba->deviceTreeP = adt_pa - pa_of_va;	/* xnu reads it with the MMU on: a VA */
 	ba->deviceTreeLength = (uint32_t)p->adt_size;

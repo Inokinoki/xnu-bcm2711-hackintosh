@@ -57,10 +57,27 @@ echo "$MEM" > "$OUT/payload.mem"
 
 # 3. run; QEMU's generic loader puts the payload at PAYLOAD_PA
 rm -f "$OUT/uart1.log"
+# SHOT=file.ppm: take a screendump of the emulated display SHOT_AFTER (default 90) seconds after the start
+if [ -n "${SHOT:-}" ]; then
+    rm -f "$OUT/mon.sock"
+    (
+        sleep "${SHOT_AFTER:-90}"
+        python3 - "$OUT/mon.sock" "$SHOT" <<'PY' || true
+import socket, sys, time
+c = socket.socket(socket.AF_UNIX)
+c.connect(sys.argv[1])
+time.sleep(0.5)
+c.recv(4096)
+c.sendall(('screendump %s\n' % sys.argv[2]).encode())
+time.sleep(2)
+PY
+    ) &
+fi
 set +e
 timeout "$SECS" "$QEMU" -M raspi4b -cpu cortex-a72 -m "${QEMU_M:-$MEM}" -kernel "$OUT/loader.elf" \
     -device loader,file="$OUT/payload.bin",addr=$PAYLOAD_PA,force-raw=on \
     ${SDIMG:+-drive file="$SDIMG",if=sd,format=raw} \
+    ${SHOT:+-monitor unix:"$OUT/mon.sock",server,nowait} \
     -display none -serial null -serial file:"$OUT/uart1.log" \
     -D "$OUT/qemu.log" -d ${QEMU_D:-guest_errors} -no-reboot
 rc=$?
