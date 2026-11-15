@@ -53,7 +53,7 @@ jobs:
           SDKP=$(xcrun --sdk macosx --show-sdk-path)
           xcodebuild build -sdk macosx -target dyld_shared_cache_builder SDKROOT=macosx DYLD_EXTRA_INC="$INC" ARM_SDK="$SDKP" \
             ARCHS=arm64 ONLY_ACTIVE_ARCH=NO MACOSX_DEPLOYMENT_TARGET=13.0 CODE_SIGN_IDENTITY=- GCC_TREAT_WARNINGS_AS_ERRORS=NO \
-            OTHER_CFLAGS="\$(inherited) $INC" OTHER_CPLUSPLUSFLAGS="\$(inherited) $INC" \
+            OTHER_CFLAGS="\$(inherited) $INC" OTHER_CPLUSPLUSFLAGS="\$(inherited) $INC -include vector -include cstdint -include cstdlib -include cstring -include array -include algorithm -include string" \
             OBJROOT="$GITHUB_WORKSPACE/build/dsc.obj" SYMROOT="$GITHUB_WORKSPACE/build/dsc.sym" \
             RC_ProjectSourceVersion=1 RC_ProjectNameAndSourceVersion=dyld-1066.10 \
             2>&1 | tee "$GITHUB_WORKSPACE/build/dsc-build.log" | tail -n 400
