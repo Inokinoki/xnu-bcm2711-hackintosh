@@ -1,9 +1,9 @@
 diff --git a/iokit/Kernel/arm/BCM2837Pointer.cpp b/iokit/Kernel/arm/BCM2837Pointer.cpp
 new file mode 100644
-index 0000000..50a1a17
+index 0000000..2062aed
 --- /dev/null
 +++ b/iokit/Kernel/arm/BCM2837Pointer.cpp
-@@ -0,0 +1,229 @@
+@@ -0,0 +1,266 @@
 +/*
 + * Serial pointer device for the Raspberry Pi 4 (BCM2711).
 + *
@@ -78,6 +78,9 @@ index 0000000..50a1a17
 +
 +public:
 +	IOSharedDataQueue *queue = NULL;
++	/* the same reports in a small ring a client can drain with external method 0 */
++	struct bcm2837_pointer_event ring[64];
++	volatile uint32_t ringHead = 0, ringTail = 0;
 +
 +	bool start(IOService *provider) APPLE_KEXT_OVERRIDE;
 +	IOReturn newUserClient(task_t owningTask, void *securityID, UInt32 type,
@@ -93,6 +96,8 @@ index 0000000..50a1a17
 +	IOReturn clientClose(void) APPLE_KEXT_OVERRIDE;
 +	IOReturn clientMemoryForType(UInt32 type, IOOptionBits *options,
 +	    IOMemoryDescriptor **memory) APPLE_KEXT_OVERRIDE;
++	IOReturn externalMethod(uint32_t selector, IOExternalMethodArguments *arguments,
++	    IOExternalMethodDispatch *dispatch, OSObject *target, void *reference) APPLE_KEXT_OVERRIDE;
 +	using IOUserClient::registerNotificationPort;
 +	IOReturn registerNotificationPort(mach_port_t port, UInt32 type, io_user_reference_t refCon) APPLE_KEXT_OVERRIDE;
 +};
@@ -151,6 +156,11 @@ index 0000000..50a1a17
 +	ev.buttons = ((packet[0] & 0x20) ? 1u : 0) | ((packet[0] & 0x10) ? 2u : 0);
 +	ev.timestamp = mach_absolute_time();
 +	queue->enqueue(&ev, sizeof(ev));
++	if (((ringTail + 1) & 63) != ringHead) {
++		ring[ringTail] = ev;
++		__asm__ volatile ("dmb ish" ::: "memory");
++		ringTail = (ringTail + 1) & 63;
++	}
 +	if (reports++ == 0) {
 +		IOLog("BCM2837 pointer: first report dx %d dy %d buttons %u\n", ev.dx, ev.dy, ev.buttons);
 +	}
@@ -220,6 +230,33 @@ index 0000000..50a1a17
 +	}
 +	*options = 0;
 +	*memory = md;
++	return kIOReturnSuccess;
++}
++
++/* selector 0: take the oldest report; scalar outputs valid, dx, dy, buttons (valid 0 when none is waiting) */
++IOReturn
++BCM2837PointerUserClient::externalMethod(uint32_t selector, IOExternalMethodArguments *arguments,
++    IOExternalMethodDispatch *dispatch __unused, OSObject *target __unused, void *reference __unused)
++{
++	if (pointer == NULL) {
++		return kIOReturnNotAttached;
++	}
++	if (selector != 0 || arguments->scalarOutputCount < 4) {
++		return kIOReturnBadArgument;
++	}
++	arguments->scalarOutputCount = 4;
++	if (pointer->ringHead == pointer->ringTail) {
++		arguments->scalarOutput[0] = 0;
++		arguments->scalarOutput[1] = arguments->scalarOutput[2] = arguments->scalarOutput[3] = 0;
++		return kIOReturnSuccess;
++	}
++	__asm__ volatile ("dmb ish" ::: "memory");
++	struct bcm2837_pointer_event ev = pointer->ring[pointer->ringHead];
++	pointer->ringHead = (pointer->ringHead + 1) & 63;
++	arguments->scalarOutput[0] = 1;
++	arguments->scalarOutput[1] = (uint64_t)(int64_t)ev.dx;
++	arguments->scalarOutput[2] = (uint64_t)(int64_t)ev.dy;
++	arguments->scalarOutput[3] = ev.buttons;
 +	return kIOReturnSuccess;
 +}
 +

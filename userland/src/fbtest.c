@@ -49,56 +49,19 @@ pointer_paint(void *base, uint32_t w, uint32_t h, uint32_t pitch, int px, int py
 	}
 }
 
-/* Layout of the kernel's IOSharedDataQueue memory and of the entries BCM2837Pointer puts in it. */
-struct queue_memory {
-	uint32_t queue_size;
-	volatile uint32_t head;
-	volatile uint32_t tail;
-	uint8_t queue[];
-};
-struct pointer_event {
-	int32_t dx, dy;
-	uint32_t buttons;
-	uint32_t reserved;
-	uint64_t timestamp;
-};
-
-/* Take one entry off the queue (same rules as IOKit's IODataQueueDequeue). */
-static int
-queue_next(struct queue_memory *q, struct pointer_event *ev)
-{
-	uint32_t head = q->head, tail = q->tail;
-	if (head == tail) {
-		return 0;
-	}
-	uint32_t size, at = head;
-	if (head + 4 <= q->queue_size) {
-		memcpy(&size, q->queue + head, 4);
-	}
-	if (head + 4 > q->queue_size || head + 4 + size > q->queue_size) {
-		at = 0;                 /* the entry wrapped to the start */
-		memcpy(&size, q->queue, 4);
-	}
-	if (size == sizeof(*ev)) {
-		memcpy(ev, q->queue + at + 4, sizeof(*ev));
-	}
-	q->head = at + 4 + size;
-	return size == sizeof(*ev);
-}
-
 /* Keep the screen; follow the pointer device if there is one. */
 static void
 hold(void *base, uint32_t w, uint32_t h, uint32_t pitch)
 {
 	mach_port_t service, connect;
-	struct queue_memory *q = NULL;
-	size_t qsize = 0;
-	void *qaddr = NULL;
+	int have_pointer = 0;
+	uint64_t probe[4];
+	uint32_t pn = 4;
 	if (iol_find_service("BCM2837Pointer", &service) == KERN_SUCCESS &&
 	    iol_open(service, 0, &connect) == KERN_SUCCESS &&
-	    iol_map(connect, 0, &qaddr, &qsize) == KERN_SUCCESS) {
-		q = qaddr;
-		printf("fbtest: pointer queue mapped, %u bytes\n", q->queue_size);
+	    iol_call(connect, 0, NULL, 0, probe, &pn) == KERN_SUCCESS) {
+		have_pointer = 1;
+		printf("fbtest: pointer device open\n");
 	} else {
 		printf("fbtest: no pointer device\n");
 	}
@@ -106,17 +69,20 @@ hold(void *base, uint32_t w, uint32_t h, uint32_t pitch)
 	int px = (int)w / 2, py = (int)h / 2;
 	pointer_paint(base, w, h, pitch, px, py, 1);
 	for (;;) {
-		struct pointer_event ev;
-		while (q != NULL && queue_next(q, &ev)) {
+		uint64_t r[4];
+		uint32_t rn = 4;
+		while (have_pointer && iol_call(connect, 0, NULL, 0, r, &rn) == KERN_SUCCESS && rn == 4 && r[0]) {
+			rn = 4;
 			pointer_paint(base, w, h, pitch, px, py, 0);
-			px += ev.dx;
-			py += ev.dy;
+			px += (int32_t)r[1];
+			py += (int32_t)r[2];
 			px = px < 0 ? 0 : (px > (int)w - POINTER_SIZE ? (int)w - POINTER_SIZE : px);
 			py = py < 0 ? 0 : (py > (int)h - POINTER_SIZE ? (int)h - POINTER_SIZE : py);
 			pointer_paint(base, w, h, pitch, px, py, 1);
-			printf("fbtest: pointer at %d %d buttons %u\n", px, py, ev.buttons);
+			printf("fbtest: pointer at %d %d buttons %u\n", px, py, (unsigned)r[3]);
 			fflush(stdout);
 		}
+		rn = 4;
 		usleep(16000);
 	}
 }
