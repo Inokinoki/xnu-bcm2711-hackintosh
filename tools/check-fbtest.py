@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """Check a QEMU screendump (PPM, P6) against the picture userland/src/fbtest.c draws.
 
-  check-fbtest.py SCREEN.ppm
+  check-fbtest.py SCREEN.ppm [POINTER_X POINTER_Y]
+
+With POINTER_X POINTER_Y, also expects fbtest's orange pointer with its top-left corner there and the screen
+centre (where the pointer starts) back to the picture.
 
 Exits 1 and prints the mismatches when the bars, gradient or marker are not where fbtest puts them. A swapped
 red and blue channel (wrong pixel order) is reported as such.
@@ -34,6 +37,12 @@ def main():
         (70, 450): (255, 255, 255),                   # marker
         (96, 480): (255, 0, 0),                       # marker centre
     }
+    if len(sys.argv) > 3:
+        px, py = int(sys.argv[2]), int(sys.argv[3])
+        expect[(px + 6, py + 6)] = (255, 128, 0)
+        cx, cy = w // 2 + 6, h // 2 + 6
+        g = cx * 255 // (w - 1)
+        expect[(cx, cy)] = (g, g, g)
     bad = [(p, at(*p), c) for p, c in expect.items() if at(*p) != c]
     for p, got, want in bad:
         print('pixel %s: got %s, want %s' % (p, got, want))

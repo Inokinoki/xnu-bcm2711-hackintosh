@@ -1,0 +1,261 @@
+diff --git a/iokit/Kernel/arm/BCM2837Pointer.cpp b/iokit/Kernel/arm/BCM2837Pointer.cpp
+new file mode 100644
+index 0000000..2caa9cc
+--- /dev/null
++++ b/iokit/Kernel/arm/BCM2837Pointer.cpp
+@@ -0,0 +1,229 @@
++/*
++ * Serial pointer device for the Raspberry Pi 4 (BCM2711).
++ *
++ * Until there is a USB stack, pointer input comes from a serial mouse on the PL011
++ * UART (0xfe201000, QEMU raspi4b's first serial port; the console is on the mini
++ * UART). The UART is polled from a timer and decoded as the Microsoft serial mouse
++ * protocol (1200 baud 7N1, three bytes per report):
++ *   byte 0: 1 L R Y7 Y6 X7 X6    byte 1: 0 X5..X0    byte 2: 0 Y5..Y0
++ *
++ * Each report becomes one entry in an IOSharedDataQueue that a user client maps
++ * (IOConnectMapMemory type 0): struct bcm2837_pointer_event below. A client may
++ * also register a notification port for data-available messages.
++ *
++ * Verified on QEMU only. On hardware the PL011's default pins are the ones the
++ * console uses, so a real serial mouse needs another pin assignment.
++ */
++#include <pexpert/arm64/board_config.h>
++
++#if defined(ARM64_BOARD_CONFIG_BCM2837)
++#include <IOKit/IOService.h>
++#include <IOKit/IOUserClient.h>
++#include <IOKit/IOSharedDataQueue.h>
++#include <IOKit/IOTimerEventSource.h>
++#include <IOKit/IOWorkLoop.h>
++#include <IOKit/IOLib.h>
++#include <kern/clock.h>
++
++extern "C" vm_offset_t ml_io_map(vm_offset_t phys_addr, vm_size_t size);
++
++#define PL011_PHYS      0xfe201000ULL
++#define PL011_DR        0x00
++#define PL011_FR        0x18
++#define PL011_IBRD      0x24
++#define PL011_FBRD      0x28
++#define PL011_LCRH      0x2c
++#define PL011_CR        0x30
++#define PL011_IMSC      0x38
++#define PL011_ICR       0x44
++#define FR_RXFE         (1u << 4)
++
++#define POLL_MS         10
++#define QUEUE_BYTES     4096
++
++struct bcm2837_pointer_event {
++	int32_t  dx, dy;        /* relative motion, y grows downward */
++	uint32_t buttons;       /* bit 0 left, bit 1 right */
++	uint32_t reserved;
++	uint64_t timestamp;     /* mach_absolute_time */
++};
++
++class BCM2837Pointer : public IOService {
++	OSDeclareDefaultStructors(BCM2837Pointer);
++
++	volatile uint8_t *regs = NULL;
++	IOTimerEventSource *timer = NULL;
++	uint8_t packet[3];
++	unsigned int have = 0;
++	uint64_t reports = 0;
++
++	uint32_t
++	rd(uint32_t off)
++	{
++		return *(volatile uint32_t *)(regs + off);
++	}
++	void
++	wr(uint32_t off, uint32_t v)
++	{
++		*(volatile uint32_t *)(regs + off) = v;
++	}
++	void poll(IOTimerEventSource *sender);
++	void byte(uint8_t b);
++
++public:
++	IOSharedDataQueue *queue = NULL;
++
++	bool start(IOService *provider) APPLE_KEXT_OVERRIDE;
++	IOReturn newUserClient(task_t owningTask, void *securityID, UInt32 type,
++	    IOUserClient **handler) APPLE_KEXT_OVERRIDE;
++};
++
++class BCM2837PointerUserClient : public IOUserClient {
++	OSDeclareDefaultStructors(BCM2837PointerUserClient);
++	BCM2837Pointer *pointer = NULL;
++
++public:
++	bool start(IOService *provider) APPLE_KEXT_OVERRIDE;
++	IOReturn clientClose(void) APPLE_KEXT_OVERRIDE;
++	IOReturn clientMemoryForType(UInt32 type, IOOptionBits *options,
++	    IOMemoryDescriptor **memory) APPLE_KEXT_OVERRIDE;
++	using IOUserClient::registerNotificationPort;
++	IOReturn registerNotificationPort(mach_port_t port, UInt32 type, io_user_reference_t refCon) APPLE_KEXT_OVERRIDE;
++};
++
++OSDefineMetaClassAndStructors(BCM2837Pointer, IOService);
++OSDefineMetaClassAndStructors(BCM2837PointerUserClient, IOUserClient);
++
++bool
++BCM2837Pointer::start(IOService *provider)
++{
++	if (!IOService::start(provider)) {
++		return false;
++	}
++	regs = (volatile uint8_t *)ml_io_map((vm_offset_t)PL011_PHYS, 0x1000);
++	queue = IOSharedDataQueue::withCapacity(QUEUE_BYTES).detach();
++	IOWorkLoop *wl = getWorkLoop();
++	if (regs == NULL || queue == NULL || wl == NULL) {
++		return false;
++	}
++	/* 1200 baud 7N1 with FIFOs from the 48 MHz UART clock, receive only, no interrupts */
++	wr(PL011_CR, 0);
++	wr(PL011_IMSC, 0);
++	wr(PL011_ICR, 0x7ff);
++	wr(PL011_IBRD, 2500);
++	wr(PL011_FBRD, 0);
++	wr(PL011_LCRH, (2u << 5) | (1u << 4));
++	wr(PL011_CR, (1u << 9) | 1u);
++
++	timer = IOTimerEventSource::timerEventSource(this,
++	    OSMemberFunctionCast(IOTimerEventSource::Action, this, &BCM2837Pointer::poll));
++	if (timer == NULL || wl->addEventSource(timer) != kIOReturnSuccess) {
++		return false;
++	}
++	timer->setTimeoutMS(POLL_MS);
++	registerService();
++	IOLog("BCM2837 pointer: serial mouse on the PL011, polled every %d ms\n", POLL_MS);
++	return true;
++}
++
++void
++BCM2837Pointer::byte(uint8_t b)
++{
++	if (b & 0x40) {
++		have = 0;               /* sync bit: first byte of a report */
++	} else if (have == 0) {
++		return;                 /* not in a report */
++	}
++	packet[have++] = b;
++	if (have < 3) {
++		return;
++	}
++	have = 0;
++	struct bcm2837_pointer_event ev = {};
++	ev.dx = (int8_t)(((packet[0] & 0x03) << 6) | (packet[1] & 0x3f));
++	ev.dy = (int8_t)(((packet[0] & 0x0c) << 4) | (packet[2] & 0x3f));
++	ev.buttons = ((packet[0] & 0x20) ? 1u : 0) | ((packet[0] & 0x10) ? 2u : 0);
++	ev.timestamp = mach_absolute_time();
++	queue->enqueue(&ev, sizeof(ev));
++	if (reports++ == 0) {
++		IOLog("BCM2837 pointer: first report dx %d dy %d buttons %u\n", ev.dx, ev.dy, ev.buttons);
++	}
++}
++
++void
++BCM2837Pointer::poll(IOTimerEventSource *sender)
++{
++	for (int i = 0; i < 64 && !(rd(PL011_FR) & FR_RXFE); i++) {
++		uint32_t d = rd(PL011_DR);
++		if (!(d & 0xf00)) {     /* no framing, parity, break or overrun error */
++			byte((uint8_t)(d & 0x7f));
++		}
++	}
++	sender->setTimeoutMS(POLL_MS);
++}
++
++IOReturn
++BCM2837Pointer::newUserClient(task_t owningTask, void *securityID, UInt32 type,
++    IOUserClient **handler)
++{
++	BCM2837PointerUserClient *client = OSTypeAlloc(BCM2837PointerUserClient);
++
++	if (client == NULL) {
++		return kIOReturnNoMemory;
++	}
++	if (!client->initWithTask(owningTask, securityID, type)) {
++		client->release();
++		return kIOReturnBadArgument;
++	}
++	if (!client->attach(this) || !client->start(this)) {
++		client->detach(this);
++		client->release();
++		return kIOReturnUnsupported;
++	}
++	*handler = client;
++	return kIOReturnSuccess;
++}
++
++bool
++BCM2837PointerUserClient::start(IOService *provider)
++{
++	pointer = OSDynamicCast(BCM2837Pointer, provider);
++	return pointer != NULL && IOUserClient::start(provider);
++}
++
++IOReturn
++BCM2837PointerUserClient::clientClose(void)
++{
++	if (pointer != NULL && pointer->queue != NULL) {
++		pointer->queue->setNotificationPort(MACH_PORT_NULL);
++	}
++	terminate();
++	return kIOReturnSuccess;
++}
++
++IOReturn
++BCM2837PointerUserClient::clientMemoryForType(UInt32 type, IOOptionBits *options,
++    IOMemoryDescriptor **memory)
++{
++	if (type != 0 || pointer == NULL || pointer->queue == NULL) {
++		return kIOReturnBadArgument;
++	}
++	IOMemoryDescriptor *md = pointer->queue->getMemoryDescriptor().detach();
++	if (md == NULL) {
++		return kIOReturnNoMemory;
++	}
++	*options = 0;
++	*memory = md;
++	return kIOReturnSuccess;
++}
++
++IOReturn
++BCM2837PointerUserClient::registerNotificationPort(mach_port_t port, UInt32 type __unused, io_user_reference_t refCon __unused)
++{
++	if (pointer == NULL || pointer->queue == NULL) {
++		return kIOReturnNotAttached;
++	}
++	pointer->queue->setNotificationPort(port);
++	return kIOReturnSuccess;
++}
++#endif /* ARM64_BOARD_CONFIG_BCM2837 */
+diff --git a/iokit/KernelConfigTables.cpp b/iokit/KernelConfigTables.cpp
+index f6036a1..51114af 100644
+--- a/iokit/KernelConfigTables.cpp
++++ b/iokit/KernelConfigTables.cpp
+@@ -65,6 +65,12 @@ const char * gIOKernelConfigTables =
+     "     'IOResourceMatch' = IOKit;"
+     "     'IOMatchCategory' = BCM2837Framebuffer;"
+     "   },"
++    "   {"
++    "     'IOClass'         = BCM2837Pointer;"
++    "     'IOProviderClass' = IOResources;"
++    "     'IOResourceMatch' = IOKit;"
++    "     'IOMatchCategory' = BCM2837Pointer;"
++    "   },"
+ #endif
+     "   {"
+     "     'IOClass'         = IOPanicPlatform;"
+diff --git a/iokit/conf/files.arm64 b/iokit/conf/files.arm64
+index c8cf27b..7069fd5 100644
+--- a/iokit/conf/files.arm64
++++ b/iokit/conf/files.arm64
+@@ -14,3 +14,4 @@ iokit/Kernel/arm/BCM2837CPU.cpp                                  optional iokitc
+ iokit/Kernel/arm/BCM2711GIC.cpp                                   optional iokitcpp
+ iokit/Kernel/arm/BCM2711SysTimer.cpp                              optional iokitcpp
+ iokit/Kernel/arm/BCM2837Framebuffer.cpp                           optional iokitcpp
++iokit/Kernel/arm/BCM2837Pointer.cpp                               optional iokitcpp

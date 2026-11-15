@@ -59,11 +59,25 @@ echo "$MEM" > "$OUT/payload.mem"
 
 # 3. run; QEMU's generic loader puts the payload at PAYLOAD_PA
 rm -f "$OUT/uart1.log"
-# SHOT=file.ppm: take a screendump of the emulated display SHOT_AFTER (default 90) seconds after the start
+# SHOT=file.ppm: take a screendump of the emulated display SHOT_AFTER (default 90) seconds after the start.
+# MOUSE=1: the PL011 (serial0) is a unix socket, and three Microsoft serial mouse reports (dx 100, dy 50 each)
+# are written to it 15 seconds before the screendump.
 if [ -n "${SHOT:-}" ]; then
-    rm -f "$OUT/mon.sock"
+    rm -f "$OUT/mon.sock" "$OUT/mouse.sock"
     (
-        sleep "${SHOT_AFTER:-90}"
+        sleep "$(( ${SHOT_AFTER:-90} - 15 ))"
+        if [ -n "${MOUSE:-}" ]; then
+            python3 - "$OUT/mouse.sock" <<'PY' || true
+import socket, sys, time
+c = socket.socket(socket.AF_UNIX)
+c.connect(sys.argv[1])
+for _ in range(3):
+    c.sendall(bytes([0x41, 0x24, 0x32]))
+    time.sleep(0.5)
+time.sleep(1)
+PY
+        fi
+        sleep 12
         python3 - "$OUT/mon.sock" "$SHOT" <<'PY' || true
 import socket, sys, time
 c = socket.socket(socket.AF_UNIX)
@@ -75,12 +89,14 @@ time.sleep(2)
 PY
     ) &
 fi
+SERIAL0=null
+[ -z "${MOUSE:-}" ] || SERIAL0="unix:$OUT/mouse.sock,server,nowait"
 set +e
 timeout "$SECS" "$QEMU" -M raspi4b -cpu cortex-a72 -m "${QEMU_M:-$MEM}" -kernel "$OUT/loader.elf" \
     -device loader,file="$OUT/payload.bin",addr=$PAYLOAD_PA,force-raw=on \
     ${SDIMG:+-drive file="$SDIMG",if=sd,format=raw} \
     ${SHOT:+-monitor unix:"$OUT/mon.sock",server,nowait} \
-    -display none -serial null -serial file:"$OUT/uart1.log" \
+    -display none -serial "$SERIAL0" -serial file:"$OUT/uart1.log" \
     -D "$OUT/qemu.log" -d ${QEMU_D:-guest_errors} -no-reboot
 rc=$?
 set -e
