@@ -50,6 +50,8 @@ fi
 if [ -n "${SDIMG:-}" ]; then
     : "${CMDLINE:=debug=0xc serial=3 cpus=1 wdt=-1 keepsyms=1 kt_fixed_zones=120 -noprogress rd=sdroot0${SDPART:+ sdpart=$SDPART}}"
 fi
+# EXTRA_BOOTARGS is appended to the default boot-args (e.g. fbtest=1)
+[ -n "${CMDLINE:-}" ] && [ -n "${EXTRA_BOOTARGS:-}" ] && CMDLINE="$CMDLINE $EXTRA_BOOTARGS"
 [ -n "${CMDLINE:-}" ] && set -- "$@" --cmdline "$CMDLINE"
 python3 "$HERE/tools/mkpi_payload.py" "$@"
 echo "$PAYLOAD_PA" > "$OUT/payload.pa"

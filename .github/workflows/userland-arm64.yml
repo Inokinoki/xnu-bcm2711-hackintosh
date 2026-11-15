@@ -279,6 +279,11 @@ jobs:
         continue-on-error: true
         run: userland/build-init.sh build/userland/root
 
+      - name: fbtest (IOKit framebuffer client)
+        id: fbtest
+        continue-on-error: true
+        run: userland/build-fbtest.sh build/userland/root build/userland/src
+
       - name: bash
         id: bash
         continue-on-error: true

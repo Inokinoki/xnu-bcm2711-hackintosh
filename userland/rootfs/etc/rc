@@ -44,4 +44,8 @@ pagesize
 getconf PAGE_SIZE
 dmesg | head -2
 mount
+# boot-arg fbtest=1: draw the test picture through IOKit and keep the screen (the boot test takes a screendump)
+case " $(sysctl -n kern.bootargs) " in
+*" fbtest=1 "*) fbtest hold & sleep 2 ;;
+esac
 echo "rc: done USERLAND-SELFTEST-OK"

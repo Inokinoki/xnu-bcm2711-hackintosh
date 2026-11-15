@@ -1,0 +1,228 @@
+diff --git a/iokit/Kernel/arm/BCM2837Framebuffer.cpp b/iokit/Kernel/arm/BCM2837Framebuffer.cpp
+new file mode 100644
+index 0000000..25a51c4
+--- /dev/null
++++ b/iokit/Kernel/arm/BCM2837Framebuffer.cpp
+@@ -0,0 +1,171 @@
++/*
++ * Framebuffer service for the Raspberry Pi 4 (BCM2711).
++ *
++ * The loader asks the firmware for a framebuffer and passes it in boot_args.Video;
++ * the kernel mirrors its console on it. This service gives the same memory to
++ * userland: a process opens BCM2837Framebuffer, maps the pixels with
++ * IOConnectMapMemory (type 0) and draws.
++ *
++ * User client selectors:
++ *   0  GetInfo            -> [width, height, rowBytes, depth]
++ *   1  SetConsoleMirror   [on] : the kernel console stops (0) or resumes (1) drawing
++ *                         on the screen; serial output is not affected.
++ * The mirror is turned back on when the client closes.
++ */
++#include <pexpert/arm64/board_config.h>
++
++#if defined(ARM64_BOARD_CONFIG_BCM2837)
++#include <IOKit/IOService.h>
++#include <IOKit/IOUserClient.h>
++#include <IOKit/IOMemoryDescriptor.h>
++#include <IOKit/IOLib.h>
++#include <pexpert/pexpert.h>
++
++extern "C" {
++/* osfmk/console/serial_console.c: nonzero while the console is mirrored on the framebuffer */
++extern int bcm2837_fb_console_mirror;
++}
++
++enum {
++	kBCM2837FBGetInfo          = 0,
++	kBCM2837FBSetConsoleMirror = 1,
++};
++
++class BCM2837Framebuffer : public IOService {
++	OSDeclareDefaultStructors(BCM2837Framebuffer);
++
++public:
++	uint64_t fbPhys = 0;
++	uint32_t fbWidth = 0, fbHeight = 0, fbRowBytes = 0, fbDepth = 0;
++
++	bool start(IOService *provider) APPLE_KEXT_OVERRIDE;
++	IOReturn newUserClient(task_t owningTask, void *securityID, UInt32 type,
++	    IOUserClient **handler) APPLE_KEXT_OVERRIDE;
++};
++
++class BCM2837FramebufferUserClient : public IOUserClient {
++	OSDeclareDefaultStructors(BCM2837FramebufferUserClient);
++	BCM2837Framebuffer *fb = NULL;
++
++public:
++	bool start(IOService *provider) APPLE_KEXT_OVERRIDE;
++	IOReturn clientClose(void) APPLE_KEXT_OVERRIDE;
++	IOReturn clientMemoryForType(UInt32 type, IOOptionBits *options,
++	    IOMemoryDescriptor **memory) APPLE_KEXT_OVERRIDE;
++	IOReturn externalMethod(uint32_t selector, IOExternalMethodArguments *arguments,
++	    IOExternalMethodDispatch *dispatch, OSObject *target, void *reference) APPLE_KEXT_OVERRIDE;
++};
++
++OSDefineMetaClassAndStructors(BCM2837Framebuffer, IOService);
++OSDefineMetaClassAndStructors(BCM2837FramebufferUserClient, IOUserClient);
++
++bool
++BCM2837Framebuffer::start(IOService *provider)
++{
++	PE_Video video;
++
++	if (PE_current_console(&video) != 0 || (video.v_baseAddr & ~3UL) == 0 ||
++	    video.v_width == 0 || video.v_height == 0 || video.v_rowBytes == 0) {
++		return false;   /* the loader got no framebuffer */
++	}
++	if (!IOService::start(provider)) {
++		return false;
++	}
++	fbPhys = video.v_baseAddr & ~3UL;
++	fbWidth = (uint32_t)video.v_width;
++	fbHeight = (uint32_t)video.v_height;
++	fbRowBytes = (uint32_t)video.v_rowBytes;
++	fbDepth = (uint32_t)video.v_depth;
++	setProperty("width", fbWidth, 32);
++	setProperty("height", fbHeight, 32);
++	setProperty("rowBytes", fbRowBytes, 32);
++	setProperty("depth", fbDepth, 32);
++	registerService();
++	IOLog("BCM2837 framebuffer: %ux%u, %u bytes per row, depth %u at 0x%llx\n",
++	    fbWidth, fbHeight, fbRowBytes, fbDepth, fbPhys);
++	return true;
++}
++
++IOReturn
++BCM2837Framebuffer::newUserClient(task_t owningTask, void *securityID, UInt32 type,
++    IOUserClient **handler)
++{
++	BCM2837FramebufferUserClient *client = OSTypeAlloc(BCM2837FramebufferUserClient);
++
++	if (client == NULL) {
++		return kIOReturnNoMemory;
++	}
++	if (!client->initWithTask(owningTask, securityID, type)) {
++		client->release();
++		return kIOReturnBadArgument;
++	}
++	if (!client->attach(this) || !client->start(this)) {
++		client->detach(this);
++		client->release();
++		return kIOReturnUnsupported;
++	}
++	*handler = client;
++	return kIOReturnSuccess;
++}
++
++bool
++BCM2837FramebufferUserClient::start(IOService *provider)
++{
++	fb = OSDynamicCast(BCM2837Framebuffer, provider);
++	return fb != NULL && IOUserClient::start(provider);
++}
++
++IOReturn
++BCM2837FramebufferUserClient::clientClose(void)
++{
++	bcm2837_fb_console_mirror = 1;
++	terminate();
++	return kIOReturnSuccess;
++}
++
++IOReturn
++BCM2837FramebufferUserClient::clientMemoryForType(UInt32 type, IOOptionBits *options,
++    IOMemoryDescriptor **memory)
++{
++	if (type != 0 || fb == NULL) {
++		return kIOReturnBadArgument;
++	}
++	IOMemoryDescriptor *md = IOMemoryDescriptor::withPhysicalAddress(
++		(IOPhysicalAddress)fb->fbPhys, (IOByteCount)fb->fbHeight * fb->fbRowBytes, kIODirectionInOut);
++	if (md == NULL) {
++		return kIOReturnNoMemory;
++	}
++	*options = 0;
++	*memory = md;           /* the caller consumes this reference */
++	return kIOReturnSuccess;
++}
++
++IOReturn
++BCM2837FramebufferUserClient::externalMethod(uint32_t selector, IOExternalMethodArguments *arguments,
++    IOExternalMethodDispatch *dispatch __unused, OSObject *target __unused, void *reference __unused)
++{
++	if (fb == NULL) {
++		return kIOReturnNotAttached;
++	}
++	switch (selector) {
++	case kBCM2837FBGetInfo:
++		if (arguments->scalarOutputCount < 4) {
++			return kIOReturnBadArgument;
++		}
++		arguments->scalarOutput[0] = fb->fbWidth;
++		arguments->scalarOutput[1] = fb->fbHeight;
++		arguments->scalarOutput[2] = fb->fbRowBytes;
++		arguments->scalarOutput[3] = fb->fbDepth;
++		arguments->scalarOutputCount = 4;
++		return kIOReturnSuccess;
++	case kBCM2837FBSetConsoleMirror:
++		if (arguments->scalarInputCount < 1) {
++			return kIOReturnBadArgument;
++		}
++		bcm2837_fb_console_mirror = arguments->scalarInput[0] != 0;
++		return kIOReturnSuccess;
++	default:
++		return kIOReturnUnsupported;
++	}
++}
++#endif /* ARM64_BOARD_CONFIG_BCM2837 */
+diff --git a/iokit/KernelConfigTables.cpp b/iokit/KernelConfigTables.cpp
+index ce44d64..f6036a1 100644
+--- a/iokit/KernelConfigTables.cpp
++++ b/iokit/KernelConfigTables.cpp
+@@ -59,6 +59,12 @@ const char * gIOKernelConfigTables =
+     "     'IONameMatch'     = 'brcm,bcm2835-system-timer';"
+     "     'IOProbeScore'    = 10000:32;"
+     "   },"
++    "   {"
++    "     'IOClass'         = BCM2837Framebuffer;"
++    "     'IOProviderClass' = IOResources;"
++    "     'IOResourceMatch' = IOKit;"
++    "     'IOMatchCategory' = BCM2837Framebuffer;"
++    "   },"
+ #endif
+     "   {"
+     "     'IOClass'         = IOPanicPlatform;"
+diff --git a/iokit/conf/files.arm64 b/iokit/conf/files.arm64
+index 0c8742a..c8cf27b 100644
+--- a/iokit/conf/files.arm64
++++ b/iokit/conf/files.arm64
+@@ -13,3 +13,4 @@ iokit/Kernel/arm/BCM2837CPU.cpp                                  optional iokitc
+ 
+ iokit/Kernel/arm/BCM2711GIC.cpp                                   optional iokitcpp
+ iokit/Kernel/arm/BCM2711SysTimer.cpp                              optional iokitcpp
++iokit/Kernel/arm/BCM2837Framebuffer.cpp                           optional iokitcpp
+diff --git a/osfmk/console/serial_console.c b/osfmk/console/serial_console.c
+index 42cba01..f20b5e0 100644
+--- a/osfmk/console/serial_console.c
++++ b/osfmk/console/serial_console.c
+@@ -119,6 +119,11 @@ TUNABLE(bool, allow_printf_from_interrupts_disabled_context, "nointr_consio", fa
+ #define allow_printf_from_interrupts_disabled_context false
+ #endif
+ 
++#if defined(ARM64_BOARD_CONFIG_BCM2837)
++/* cleared while a BCM2837Framebuffer client owns the screen (iokit/Kernel/arm/BCM2837Framebuffer.cpp) */
++int bcm2837_fb_console_mirror = 1;
++#endif
++
+ SECURITY_READ_ONLY_EARLY(struct console_ops) cons_ops[] = {
+ 	{
+ 		.putc = serial_putc_options, .getc = _serial_getc,
+@@ -256,7 +261,7 @@ _cnputc(char c, bool poll)
+ 
+ 	cons_ops[idx].putc(c, poll);
+ #if defined(ARM64_BOARD_CONFIG_BCM2837)
+-	if (idx == SERIAL_CONS_OPS && !in_debugger) {
++	if (idx == SERIAL_CONS_OPS && !in_debugger && bcm2837_fb_console_mirror) {
+ 		/* mirror the serial console on the framebuffer; a no-op until the video console is enabled */
+ 		vcputc_options(c, poll);
+ 	}
