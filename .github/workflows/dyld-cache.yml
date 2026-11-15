@@ -69,6 +69,7 @@ jobs:
           INC="$INC $BR"
           # the stock tool needs the closed Bom framework: swap in our driver around the MRM interface
           cp "$GITHUB_WORKSPACE/tools/dsc-driver.cpp" cache-builder/dyld_shared_cache_builder.mm
+          python3 "$GITHUB_WORKSPACE/tools/dsc-patch.py"
           # ... and drop the Bom framework from its link line
           sed -i '' '/Bom.framework in Frameworks/d' dyld.xcodeproj/project.pbxproj
           echo "include flags: $INC"
