@@ -1,6 +1,6 @@
 diff --git a/iokit/Kernel/arm/BCM2837Pointer.cpp b/iokit/Kernel/arm/BCM2837Pointer.cpp
 new file mode 100644
-index 0000000..2caa9cc
+index 0000000..50a1a17
 --- /dev/null
 +++ b/iokit/Kernel/arm/BCM2837Pointer.cpp
 @@ -0,0 +1,229 @@
@@ -107,7 +107,7 @@ index 0000000..2caa9cc
 +		return false;
 +	}
 +	regs = (volatile uint8_t *)ml_io_map((vm_offset_t)PL011_PHYS, 0x1000);
-+	queue = IOSharedDataQueue::withCapacity(QUEUE_BYTES).detach();
++	queue = IOSharedDataQueue::withCapacity(QUEUE_BYTES);
 +	IOWorkLoop *wl = getWorkLoop();
 +	if (regs == NULL || queue == NULL || wl == NULL) {
 +		return false;
@@ -214,7 +214,7 @@ index 0000000..2caa9cc
 +	if (type != 0 || pointer == NULL || pointer->queue == NULL) {
 +		return kIOReturnBadArgument;
 +	}
-+	IOMemoryDescriptor *md = pointer->queue->getMemoryDescriptor().detach();
++	IOMemoryDescriptor *md = pointer->queue->getMemoryDescriptor();
 +	if (md == NULL) {
 +		return kIOReturnNoMemory;
 +	}

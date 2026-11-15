@@ -12,6 +12,9 @@ jobs:
   builder:
     runs-on: macos-15
     timeout-minutes: 90
+    permissions:
+      actions: read
+      contents: read
     steps:
       - uses: actions/checkout@v4
 
@@ -77,6 +80,42 @@ jobs:
             RC_ProjectSourceVersion=1 RC_ProjectNameAndSourceVersion=dyld-1066.10 \
             2>&1 | tee "$GITHUB_WORKSPACE/build/dsc-build.log" | tail -n 400
           test -x "$GITHUB_WORKSPACE/build/dsc.sym/Release/dyld_shared_cache_builder" || test -x "$GITHUB_WORKSPACE/build/dsc.sym/Debug/dyld_shared_cache_builder"
+
+      - name: Userland root (latest successful userland-arm64 run)
+        if: steps.build.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          id=$(gh run list --workflow userland-arm64.yml --status success --limit 1 --json databaseId --jq '.[0].databaseId')
+          echo "userland from run $id"
+          gh run download "$id" -n userland-arm64-root -D build/root
+          # one entry per dylib, under its install name (the artifact has copies where the root has symlinks)
+          (cd build/root && find usr/lib -name '*.dylib' -type f | sort) | while read -r f; do
+            name=$(otool -D "build/root/$f" | tail -1)
+            if [ "$name" = "/$f" ]; then echo "/$f"; else echo "skip /$f (install name $name)" >&2; fi
+          done > build/dylibs.txt
+          wc -l build/dylibs.txt
+          cat build/dylibs.txt
+
+      - name: Build the shared cache
+        id: cache
+        if: steps.build.outcome == 'success'
+        continue-on-error: true
+        run: |
+          tool=$(ls build/dsc.sym/*/dyld_shared_cache_builder | head -1)
+          "$tool" build/cache build/root build/dylibs.txt arm64 2>&1 | tee build/dsc-run.log | tail -n 200
+          ls -l build/cache
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dyld-shared-cache
+          path: |
+            build/cache
+            build/dsc-run.log
+            build/dylibs.txt
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Errors
         if: always()
