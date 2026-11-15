@@ -1,0 +1,49 @@
+name: dyld-cache
+
+# Builds dyld's shared cache builder (dyld-1066.10, the version that shipped with macOS 13.5) as a host tool on a
+# macOS runner. A later step turns the userland root's dylibs into /System/Library/dyld/dyld_shared_cache_arm64, so
+# processes get a populated shared region and the kernel stops logging "check_np ... vm_shared_region_start_address()
+# failed" for every exec (the region is empty without a cache).
+
+on:
+  workflow_dispatch:
+
+jobs:
+  builder:
+    runs-on: macos-15
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch dyld
+        run: python3 -I userland/fetch-sources.py build/dyld-src dyld
+
+      - name: Build dyld_shared_cache_builder
+        id: build
+        continue-on-error: true
+        run: |
+          XC=$(ls -d /Applications/Xcode_15*.app 2>/dev/null | sort -V | tail -1)
+          [ -n "$XC" ] || XC=/Applications/Xcode_16.4.app
+          sudo xcode-select -s "$XC"
+          . userland/lib-env.sh >/dev/null 2>&1 || true
+          cd build/dyld-src/dyld
+          (grep -rl 'BSD.xcconfig' . --include='*.xcconfig' | while read -r f; do sed -i '' '/BSD.xcconfig/d' "$f"; done) || true
+          INC="-idirafter $PWD/include -idirafter $GITHUB_WORKSPACE/userland/include-dyld"
+          xcodebuild build -sdk macosx -target dyld_shared_cache_builder \
+            ARCHS=arm64 ONLY_ACTIVE_ARCH=NO MACOSX_DEPLOYMENT_TARGET=13.0 CODE_SIGN_IDENTITY=- GCC_TREAT_WARNINGS_AS_ERRORS=NO \
+            OTHER_CFLAGS="\$(inherited) $INC" OTHER_CPLUSPLUSFLAGS="\$(inherited) $INC" \
+            OBJROOT="$GITHUB_WORKSPACE/build/dsc.obj" SYMROOT="$GITHUB_WORKSPACE/build/dsc.sym" \
+            RC_ProjectSourceVersion=1 RC_ProjectNameAndSourceVersion=dyld-1066.10 \
+            2>&1 | tee "$GITHUB_WORKSPACE/build/dsc-build.log" | tail -n 400
+          test -x "$GITHUB_WORKSPACE/build/dsc.sym/Release/dyld_shared_cache_builder" || test -x "$GITHUB_WORKSPACE/build/dsc.sym/Debug/dyld_shared_cache_builder"
+
+      - name: Errors
+        if: always()
+        run: grep -E "error:|fatal error|\*\* BUILD" build/dsc-build.log | sort | uniq -c | sort -rn | head -60 || true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dsc-build-log
+          path: build/dsc-build.log
+          retention-days: 7
