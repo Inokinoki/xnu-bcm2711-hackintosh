@@ -97,6 +97,16 @@ jobs:
           wc -l build/dylibs.txt
           cat build/dylibs.txt
 
+      - name: Why are libc++, libc++abi and libunwind ineligible?
+        if: steps.build.outcome == 'success'
+        continue-on-error: true
+        run: |
+          for f in usr/lib/libc++.1.dylib usr/lib/libc++abi.1.dylib usr/lib/system/libunwind.dylib usr/lib/libz.1.dylib usr/lib/system/libsystem_c.dylib; do
+            echo "=== $f"; ls -l "build/root/$f"
+            otool -hv "build/root/$f" | tail -2
+            otool -l "build/root/$f" | grep -E "^ *cmd |SPLIT" | sort | uniq -c | sort -rn | head -20
+          done
+
       - name: Build the shared cache
         id: cache
         if: steps.build.outcome == 'success'
