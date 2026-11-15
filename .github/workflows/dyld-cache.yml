@@ -156,6 +156,13 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
+      - uses: actions/upload-artifact@v4
+        if: steps.build.outcome == 'success'
+        with:
+          name: dsc-builder
+          path: build/dsc.sym/Release/dyld_shared_cache_builder
+          retention-days: 30
+
       - name: Errors
         if: always()
         run: grep -E "error:|fatal error|\*\* BUILD" build/dsc-build.log | sort | uniq -c | sort -rn | head -60 || true

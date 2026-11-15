@@ -59,6 +59,16 @@ jobs:
           gh run download "$id" -n xnu-8796.141.3-bcm2711-kernel -D build/kernel
           ls -l build/kernel | head
 
+      - name: dyld shared cache for the root
+        id: dsc
+        continue-on-error: true
+        run: |
+          id=$(gh run list --workflow dyld-cache.yml --status success --limit 1 --json databaseId --jq '.[0].databaseId')
+          echo "cache builder from run $id"
+          gh run download "$id" -n dsc-builder -D build/dsc-builder
+          chmod -R u+rwX build/root
+          tools/mkdsc.sh build/dsc-builder/dyld_shared_cache_builder build/root build/dsc-work
+
       - name: HFS+ root image
         run: |
           chmod -R u+rwX build/root

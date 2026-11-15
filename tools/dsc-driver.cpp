@@ -46,8 +46,8 @@ int main(int argc, const char* argv[])
     getVersion(&major, &minor);
     fprintf(stderr, "builder interface %u.%u\n", major, minor);
 
-    BuildOptions_v1 opts = {};
-    opts.version             = 1;
+    BuildOptions_v3 opts = {};
+    opts.version             = 3;
     opts.updateName          = "pixnu";
     opts.deviceName          = "bcm2711";
     opts.disposition         = InternalDevelopment;
@@ -56,7 +56,10 @@ int main(int argc, const char* argv[])
     opts.numArchs            = 1;
     opts.verboseDiagnostics  = true;
     opts.isLocallyBuiltCache = true;
-    MRMSharedCacheBuilder* b = createSharedCacheBuilder(&opts);
+    // dyld then takes the cached dylibs without comparing them with copies on disk (it would find no inode and
+    // mtime to compare with, since the files are handed over as data)
+    opts.filesRemovedFromDisk = true;
+    MRMSharedCacheBuilder* b = createSharedCacheBuilder((const BuildOptions_v1*)&opts);
     if ( b == nullptr ) {
         fprintf(stderr, "createSharedCacheBuilder failed\n");
         return 1;
