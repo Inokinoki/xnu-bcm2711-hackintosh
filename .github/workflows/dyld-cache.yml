@@ -107,6 +107,18 @@ jobs:
             otool -l "build/root/$f" | grep -E "^ *cmd |SPLIT" | sort | uniq -c | sort -rn | head -20
           done
 
+      - name: Experiment - does install_name_tool or codesign drop LC_SEGMENT_SPLIT_INFO?
+        if: steps.build.outcome == 'success'
+        continue-on-error: true
+        run: |
+          cnt() { otool -l "$1" | grep -c LC_SEGMENT_SPLIT_INFO || true; }
+          cp build/root/usr/lib/libz.1.dylib build/z.dylib
+          echo "libz original: $(cnt build/z.dylib)"
+          install_name_tool -id /usr/lib/libz.1.dylib build/z.dylib
+          echo "after install_name_tool -id: $(cnt build/z.dylib)"
+          codesign --force -s - build/z.dylib
+          echo "after codesign: $(cnt build/z.dylib)"
+
       - name: Build the shared cache
         id: cache
         if: steps.build.outcome == 'success'
