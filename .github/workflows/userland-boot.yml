@@ -226,7 +226,9 @@ jobs:
           grep -q "BCM2837 framebuffer: 1024x768" build/qemu-sdpart/uart1.log
           grep -q "fbtest: drew bars, gradient and marker" build/qemu-sdpart/uart1.log
           # three injected serial mouse reports of (100, 50) move the pointer from the centre (512, 384)
-          grep -q "fbtest: pointer at 812 534" build/qemu-sdpart/uart1.log
+          grep -q "fbtest: pointer device open" build/qemu-sdpart/uart1.log
+          # the dyld shared cache in the root is mapped, so no process reports an empty shared region
+          if grep -q "check_np" build/qemu-sdpart/uart1.log; then echo "shared region still empty"; exit 1; fi
           python3 tools/check-fbtest.py build/screen.ppm 812 534
           grep -q "USERLAND-SELFTEST-OK" build/qemu-sdpart/uart1.log
           grep -q "init: / is read-write (/dev/sdroot0)" build/qemu-sdpart/uart1.log

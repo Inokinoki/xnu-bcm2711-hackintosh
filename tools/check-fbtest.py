@@ -38,8 +38,8 @@ def main():
         (96, 480): (255, 0, 0),                       # marker centre
     }
     if len(sys.argv) > 3:
-        px, py = int(sys.argv[2]), int(sys.argv[3])
-        expect[(px + 6, py + 6)] = (255, 128, 0)
+        mx, my = int(sys.argv[2]), int(sys.argv[3])
+        expect[(mx + 6, my + 6)] = (255, 128, 0)
         cx, cy = w // 2 + 6, h // 2 + 6
         g = cx * 255 // (w - 1)
         expect[(cx, cy)] = (g, g, g)
