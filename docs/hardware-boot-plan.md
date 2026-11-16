@@ -75,6 +75,10 @@ Done when the serial console shows the same `rc:` and `semtest:` lines as the CI
   on it. A screendump of the partitioned SD boot (`SHOT=` in `tools/pi4-qemu-boot.sh`) shows the log and the shell
   prompt; CI keeps it as `build/screen.ppm` in the `qemu-boot-log` artifact. Not tried on hardware: the real
   firmware's framebuffer address and pixel order are assumptions.
+- **IOKit framebuffer and serial pointer:** done on QEMU (patches 0048, 0049, `fbtest`); on hardware the PL011 pins
+  are the console's, so a serial mouse needs another pin assignment until USB exists.
+- **dyld shared cache:** done (`tools/mkdsc.sh`); a card image should ship the cache at
+  `/System/Library/dyld/dyld_shared_cache_arm64`.
 - **Peripheral interrupts:** confirm the system timer shows 5/5 from hardware, then make the UART interrupt-driven.
 - **Missing commands:** `reboot`/`halt` (needs the watchdog reset), `login`/`getty`, `hostinfo`, `arch`.
 - **SMP:** bring up secondary CPUs and IPIs through the GIC.

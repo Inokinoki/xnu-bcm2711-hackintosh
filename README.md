@@ -48,6 +48,14 @@ Fork point: upstream `rootfs-ramdisk` (xnu-8796.141.3, HFS+ RAM disk root, SD ro
 - **Pi 4 SD card image** (`tools/mksdimage.py`, `tools/mksdcard.sh`; CI artifact `pi4-sd-image`): MBR with a FAT32 boot
   partition (firmware, `config.txt`, loader as `kernel8.img`, `payload.bin`) and the HFS+ root as partition 2 (`sdpart=2`,
   patch 0046). Layout checked with `fsck.fat` and a QEMU boot of partition 2; never read by the Pi firmware.
+- **Graphics layers (Darwin-native, no window system): works on QEMU.** Patch 0048 `BCM2837Framebuffer` and 0049
+  `BCM2837Pointer` are IOKit services with user clients; `/usr/bin/fbtest` (boot-arg `fbtest=1`, `userland/src/iokit-lite`)
+  maps the framebuffer, draws bars/gradient/marker and moves a pointer from serial-mouse reports on the PL011. CI
+  checks a screendump pixel by pixel (`tools/check-fbtest.py`). The pointer queue (IOSharedDataQueue) does not share
+  memory with a 16K-page task here, so events are read with an external method instead.
+- **dyld shared cache: used by every process.** `dyld-cache` builds Apple's cache builder; `userland-boot` builds a
+  cache for its own root (`tools/mkdsc.sh`, 37 dylibs), dyld maps it and the `shared_region ... check_np` errors are
+  gone (CI asserts it). Patch 0050 skips the trust cache query, whose lock is never initialized on this kernel.
 - Real Pi 4 hardware: untested. Known open points: mini UART baud (kernel driver assumes `core_freq=250`),
   SD slot is EMMC2 on hardware (`sdbase=0xfe340000` boot-arg; QEMU uses EMMC at `0xfe300000`), rng200 seed
   (loader built with `LOADER_CFLAGS=-DUSE_RNG200`; QEMU has no RNG so the default is a non-secure counter seed).
